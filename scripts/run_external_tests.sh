@@ -34,9 +34,12 @@ echo "编译XC外部测试程序..."
 # 编译测试框架
 ${COSMOCC} ${CFLAGS} -c "${EXTERNAL_TEST_DIR}/test_utils.c" -o "${EXTERNAL_TEST_DIR}/test_utils.o"
 
-# 编译测试文件
+# 编译测试文件（不包含main函数）
 TEST_FILES=(
     "${EXTERNAL_TEST_DIR}/test_xc_array.c"
+    "${EXTERNAL_TEST_DIR}/test_xc_object.c"
+    "${EXTERNAL_TEST_DIR}/test_xc_function.c"
+    "${EXTERNAL_TEST_DIR}/test_xc_exception.c"
 )
 
 for TEST_FILE in "${TEST_FILES[@]}"; do
@@ -45,11 +48,19 @@ for TEST_FILE in "${TEST_FILES[@]}"; do
     ${COSMOCC} ${CFLAGS} -c "${TEST_FILE}" -o "${EXTERNAL_TEST_DIR}/${TEST_BASENAME}.o"
 done
 
+# 编译主测试文件
+echo "编译主测试文件: ${EXTERNAL_TEST_DIR}/test_xc_main.c"
+${COSMOCC} ${CFLAGS} -c "${EXTERNAL_TEST_DIR}/test_xc_main.c" -o "${EXTERNAL_TEST_DIR}/test_xc_main.o"
+
 # 链接测试程序
 echo "链接外部测试程序..."
 ${COSMOCC} -o "${BIN_DIR}/test_external.exe" \
     "${EXTERNAL_TEST_DIR}/test_utils.o" \
     "${EXTERNAL_TEST_DIR}/test_xc_array.o" \
+    "${EXTERNAL_TEST_DIR}/test_xc_object.o" \
+    "${EXTERNAL_TEST_DIR}/test_xc_function.o" \
+    "${EXTERNAL_TEST_DIR}/test_xc_exception.o" \
+    "${EXTERNAL_TEST_DIR}/test_xc_main.o" \
     -L${LIB_DIR} -lxc
 
 # 显示编译结果
