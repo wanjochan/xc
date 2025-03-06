@@ -5,10 +5,6 @@
 #include "../xc.h"
 #include "../xc_object.h"
 #include "xc_types.h"
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
-#include <assert.h>
 
 /* 
  * Compare two XC objects for equality

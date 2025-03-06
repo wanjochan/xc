@@ -1,8 +1,5 @@
 #include "xc.h"
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
-#include <assert.h>
+
 /**
 ## design notes
 
@@ -149,8 +146,8 @@ static xc_val vm_creator(int type, va_list args) {
 }
 
 /* 注册 VM 类型 */
-#define XC_TYPE_VM_LOCAL 10  // 与xc.h中的定义保持一致
-int _xc_type_vm = XC_TYPE_VM_LOCAL;
+// Using XC_TYPE_VM from xc.h instead of redefining it
+int _xc_type_vm = XC_TYPE_VM;
 
 __attribute__((constructor)) static void register_vm_type(void) {
     /* 定义类型生命周期管理接口 */

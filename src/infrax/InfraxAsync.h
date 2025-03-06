@@ -29,12 +29,6 @@ c) 其他
 inotify fd (文件系统事件监控)
  */
 
-#include <stddef.h>
-#include <stdint.h>
-#include <stdbool.h>
-#include <time.h>
-#include <poll.h>
-
 // Forward declarations
 typedef struct InfraxAsync InfraxAsync;
 typedef struct InfraxPollset InfraxPollset;

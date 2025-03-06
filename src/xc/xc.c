@@ -1,17 +1,5 @@
-/*
- * xc.c - 超轻量级高级C框架实现
- */
-
-
 #include "xc.h"
 #include "xc_error.h"
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
-#include <stdarg.h>
-#include <assert.h>
-#include <stdbool.h>
-#include <setjmp.h>
 
 /* 错误代码 */
 #define XC_ERR_NONE 0

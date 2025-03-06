@@ -6,7 +6,6 @@
 
 #include "xc.h"
 #include "xc_object.h"
-#include <setjmp.h>
 
 /* Exception type constants */
 #define XC_EXCEPTION_TYPE_ERROR       0   /* Generic Error */

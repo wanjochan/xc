@@ -4,10 +4,7 @@
 #ifndef XC_H
 #define XC_H
 
-#include <stddef.h>  /* size_t */
-#include <stdarg.h>  /* va_list */
-#include <setjmp.h>  /* jmp_buf */
-#include <stdbool.h> /* bool */
+#include "cosmopolitan.h"
 
 #define XC_FALSE 0
 #define XC_TRUE 1

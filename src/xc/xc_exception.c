@@ -6,9 +6,6 @@
 #include "xc_gc.h"
 #include "xc_object.h"
 #include "xc_types/xc_types.h"
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
 
 /* Create a stack trace entry */
 static xc_stack_trace_entry_t xc_stack_trace_entry_create(const char *function, const char *file, int line) {

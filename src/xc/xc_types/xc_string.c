@@ -6,11 +6,6 @@
 #include "../xc_object.h"
 #include "../xc_gc.h"
 #include "xc_types.h"
-#include <string.h>
-#include <stdlib.h>
-#include <ctype.h>
-#include <assert.h>
-#include <stdio.h>
 
 /* String object structure */
 typedef struct {

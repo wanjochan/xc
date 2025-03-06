@@ -5,11 +5,6 @@
 #include "../xc.h"
 #include "../xc_types/xc_types.h"
 #include "../xc_object.h"
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
-#include <stdarg.h>
-#include <time.h>
 
 /* Console对象 */
 static xc_val console_obj = NULL;

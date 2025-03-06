@@ -32,12 +32,8 @@
 #include <arpa/inet.h>
 #include <netdb.h>
 #include <sys/resource.h>  /* 系统资源使用统计 */
-
-#include <errno.h>
-#include <string.h>
-#include <sys/socket.h>
-#include <netinet/in.h>
-#include <arpa/inet.h>
-#include <unistd.h>
+#include <assert.h>
+#include <poll.h>
+#include <math.h>
 
 #endif /* COSMOPOLITAN_H_ */

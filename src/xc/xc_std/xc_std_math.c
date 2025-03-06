@@ -6,11 +6,6 @@
 #include "../xc_types/xc_types.h"
 #include "../xc_error.h"
 #include "../xc_object.h"
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
-#include <math.h>
-#include <time.h>
 
 /* Math库对象 */
 static xc_val math_obj = NULL;

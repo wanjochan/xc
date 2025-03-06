@@ -1,14 +1,7 @@
+#include "cosmopolitan.h"
 #include "InfraxCore.h"
 #include "InfraxMemory.h"
 #include "InfraxSync.h"
-
-// Include system headers only in the implementation file
-#include <pthread.h>
-#include <semaphore.h>
-#include <errno.h>
-#include <time.h>
-#include <stdatomic.h>
-#include <stdbool.h>
 
 // Helper macros to access native handles
 #define GET_MUTEX(sync) ((pthread_mutex_t*)&((sync)->handle.data[0]))

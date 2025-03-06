@@ -1,6 +1,7 @@
-#include "internal/infrax/InfraxAsync.h"
+#include "cosmopolitan.h"
 #include "internal/infrax/InfraxCore.h"
 #include "internal/infrax/InfraxMemory.h"
+#include "internal/infrax/InfraxAsync.h"
 
 // Poll events
 #define INFRAX_POLLIN  0x001

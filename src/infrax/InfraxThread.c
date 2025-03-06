@@ -1,17 +1,8 @@
-/**
- * @file InfraxThread.c
- * @brief Implementation of thread management functionality
- */
-
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
-#include <pthread.h>
-#include <errno.h>
+#include "cosmopolitan.h"
+#include "internal/infrax/InfraxCore.h"
 #include "internal/infrax/InfraxThread.h"
 #include "internal/infrax/InfraxMemory.h"
 #include "internal/infrax/InfraxSync.h"
-#include "internal/infrax/InfraxCore.h"
 
 // Forward declarations of instance methods
 static InfraxError thread_start(InfraxThread* self, InfraxThreadFunc func, void* arg);

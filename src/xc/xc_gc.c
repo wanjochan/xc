@@ -7,16 +7,11 @@
 #include "xc_types/xc_array.h"
 #include "xc_types/xc_object_data.h"
 #include "xc_types/xc_function.h"
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
-#include <time.h>
 
 /* Forward declarations of internal type structures */
 typedef struct xc_array_t xc_array_t;
 typedef struct xc_object_data_t xc_object_data_t;
 typedef struct xc_function_t xc_function_t;
-#include <time.h>
 
 /* Internal GC context structure */
 typedef struct xc_gc_context {
