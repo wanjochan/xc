@@ -1,9 +1,4 @@
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
-#include <time.h>
-#include <unistd.h>  // For sleep
-
+#include "test_utils.h"
 // 故意的内存泄漏
 void memory_leak_test() {
     printf("Running memory leak test...\n");

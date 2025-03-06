@@ -4,12 +4,7 @@
  * This file contains comprehensive tests for the XC array type implementation.
  * It tests array creation, element access, modification, and various array operations.
  */
-
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
 #include "test_utils.h"
-#include "../include/libxc.h"
 
 // Global runtime instance
 static xc_runtime_t *rt;
