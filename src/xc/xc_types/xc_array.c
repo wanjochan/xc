@@ -21,6 +21,7 @@ typedef struct {
 
 /* Forward declarations */
 static bool array_ensure_capacity(xc_array_t *arr, size_t needed);
+static xc_object_t *xc_to_string_internal(xc_runtime_t *rt, xc_object_t *obj);
 
 /* Array methods */
 static void array_mark(xc_runtime_t *rt, xc_object_t *obj) {
@@ -137,6 +138,20 @@ xc_object_t *xc_array_create(xc_runtime_t *rt) {
     return xc_array_create_with_capacity(rt, 0);
 }
 
+/* Create array with initial values */
+xc_object_t *xc_array_create_with_values(xc_runtime_t *rt, xc_object_t **values, size_t count) {
+    xc_object_t *arr = xc_array_create_with_capacity(rt, count);
+    if (!arr) {
+        return NULL;
+    }
+    
+    for (size_t i = 0; i < count; i++) {
+        xc_array_push(rt, arr, values[i]);
+    }
+    
+    return arr;
+}
+
 xc_object_t *xc_array_create_with_capacity(xc_runtime_t *rt, size_t initial_capacity) {
     /* 使用 xc_gc_alloc 分配对象，并传递类型索引 */
     xc_array_t *arr = (xc_array_t *)xc_gc_alloc(rt, sizeof(xc_array_t), XC_TYPE_ARRAY);
@@ -234,6 +249,250 @@ xc_object_t *xc_array_pop(xc_runtime_t *rt, xc_object_t *arr) {
     }
 
     return value;
+}
+
+/* Add element to the beginning of the array */
+void xc_array_unshift(xc_runtime_t *rt, xc_object_t *arr, xc_object_t *value) {
+    assert(xc_is_array(rt, arr));
+    xc_array_t *array = (xc_array_t *)arr;
+    
+    if (!array_ensure_capacity(array, array->length + 1)) {
+        return;
+    }
+    
+    /* Shift all elements right by one position */
+    for (size_t i = array->length; i > 0; i--) {
+        array->items[i] = array->items[i - 1];
+    }
+    
+    array->items[0] = value;
+    if (value) {
+        xc_gc_add_ref(rt, value);
+    }
+    array->length++;
+}
+
+/* Remove and return the first element of the array */
+xc_object_t *xc_array_shift(xc_runtime_t *rt, xc_object_t *arr) {
+    assert(xc_is_array(rt, arr));
+    xc_array_t *array = (xc_array_t *)arr;
+    
+    if (array->length == 0) {
+        return NULL;
+    }
+    
+    xc_object_t *value = array->items[0];
+    
+    /* Shift all elements left by one position */
+    for (size_t i = 0; i < array->length - 1; i++) {
+        array->items[i] = array->items[i + 1];
+    }
+    
+    array->items[array->length - 1] = NULL;
+    array->length--;
+    
+    /* Decrease reference count when removing from array */
+    if (value) {
+        xc_gc_release(rt, value);
+    }
+    
+    return value;
+}
+
+/* Create a new array with elements from start to end (exclusive) */
+xc_object_t *xc_array_slice(xc_runtime_t *rt, xc_object_t *arr, int start, int end) {
+    assert(xc_is_array(rt, arr));
+    xc_array_t *array = (xc_array_t *)arr;
+    
+    /* Convert negative indices (counting from end) */
+    int length = (int)array->length;
+    
+    if (start < 0) {
+        start = length + start;
+    }
+    
+    if (end < 0) {
+        end = length + end;
+    }
+    
+    /* Clamp indices to valid range */
+    if (start < 0) {
+        start = 0;
+    }
+    
+    if (end > length) {
+        end = length;
+    }
+    
+    /* Handle invalid range */
+    if (start >= length || start >= end) {
+        return xc_array_create(rt);
+    }
+    
+    /* Create new array for the slice */
+    size_t slice_length = end - start;
+    xc_object_t *slice = xc_array_create_with_capacity(rt, slice_length);
+    if (!slice) {
+        return NULL;
+    }
+    
+    /* Copy elements to the new array */
+    for (int i = start; i < end; i++) {
+        xc_array_push(rt, slice, array->items[i]);
+    }
+    
+    return slice;
+}
+
+/* Concatenate two arrays into a new array */
+xc_object_t *xc_array_concat(xc_runtime_t *rt, xc_object_t *arr1, xc_object_t *arr2) {
+    assert(xc_is_array(rt, arr1));
+    assert(xc_is_array(rt, arr2));
+    
+    xc_array_t *array1 = (xc_array_t *)arr1;
+    xc_array_t *array2 = (xc_array_t *)arr2;
+    
+    /* Create new array with capacity for all elements */
+    size_t total_length = array1->length + array2->length;
+    xc_object_t *result = xc_array_create_with_capacity(rt, total_length);
+    if (!result) {
+        return NULL;
+    }
+    
+    /* Copy elements from first array */
+    for (size_t i = 0; i < array1->length; i++) {
+        xc_array_push(rt, result, array1->items[i]);
+    }
+    
+    /* Copy elements from second array */
+    for (size_t i = 0; i < array2->length; i++) {
+        xc_array_push(rt, result, array2->items[i]);
+    }
+    
+    return result;
+}
+
+/* Find the index of a value in an array */
+int xc_array_find_index(xc_runtime_t *rt, xc_object_t *arr, xc_object_t *value) {
+    return xc_array_find_index_from(rt, arr, value, 0);
+}
+
+/* Find the index of a value in an array starting from a specific index */
+int xc_array_find_index_from(xc_runtime_t *rt, xc_object_t *arr, xc_object_t *value, int from_index) {
+    if (!xc_is_array_object(rt, arr)) {
+        return -1;
+    }
+    
+    xc_array_t *array = (xc_array_t *)arr;
+    size_t length = array->length;
+    
+    if (from_index < 0) {
+        from_index = 0;
+    }
+    
+    for (size_t i = from_index; i < length; i++) {
+        if (xc_compare_objects(rt, array->items[i], value) == 0) {
+            return (int)i;
+        }
+    }
+    
+    return -1;
+}
+
+/* Convert an object to a string representation */
+static xc_object_t *xc_to_string_internal(xc_runtime_t *rt, xc_object_t *obj) {
+    if (obj == NULL) {
+        return xc_string_object_create(rt, "null");
+    }
+    
+    if (xc_is_string_object(rt, obj)) {
+        return xc_gc_retain(rt, obj);
+    }
+    
+    if (xc_is_number_object(rt, obj)) {
+        char buffer[32];
+        snprintf(buffer, sizeof(buffer), "%.14g", xc_number_get_value(rt, obj));
+        return xc_string_object_create(rt, buffer);
+    }
+    
+    if (xc_is_boolean_object(rt, obj)) {
+        return xc_string_object_create(rt, xc_boolean_get_value(rt, obj) ? "true" : "false");
+    }
+    
+    if (xc_is_null_object(rt, obj)) {
+        return xc_string_object_create(rt, "null");
+    }
+    
+    if (xc_is_array_object(rt, obj)) {
+        return xc_array_join_elements(rt, obj, xc_string_object_create(rt, ","));
+    }
+    
+    // Default for other types
+    return xc_string_object_create(rt, "[object Object]");
+}
+
+/* Join array elements into a string */
+xc_object_t *xc_array_join_elements(xc_runtime_t *rt, xc_object_t *arr, xc_object_t *separator) {
+    if (!xc_is_array_object(rt, arr)) {
+        return xc_string_object_create(rt, "");
+    }
+    
+    xc_array_t *array = (xc_array_t *)arr;
+    size_t length = array->length;
+    
+    if (length == 0) {
+        return xc_string_object_create(rt, "");
+    }
+    
+    const char *sep_str = ",";
+    if (separator != NULL && xc_is_string_object(rt, separator)) {
+        sep_str = xc_string_get_value(rt, separator);
+    }
+    
+    // Calculate the total length of the result string
+    size_t total_length = 0;
+    size_t sep_len = strlen(sep_str);
+    
+    for (size_t i = 0; i < length; i++) {
+        xc_object_t *str = xc_to_string_internal(rt, array->items[i]);
+        total_length += strlen(xc_string_get_value(rt, str));
+        xc_gc_release(rt, str);
+        
+        if (i < length - 1) {
+            total_length += sep_len;
+        }
+    }
+    
+    // Allocate memory for the result string
+    char *result = (char *)malloc(total_length + 1);
+    if (result == NULL) {
+        return xc_string_object_create(rt, "");
+    }
+    
+    // Build the result string
+    char *p = result;
+    for (size_t i = 0; i < length; i++) {
+        xc_object_t *str = xc_to_string_internal(rt, array->items[i]);
+        const char *str_value = xc_string_get_value(rt, str);
+        size_t str_len = strlen(str_value);
+        
+        memcpy(p, str_value, str_len);
+        p += str_len;
+        
+        xc_gc_release(rt, str);
+        
+        if (i < length - 1) {
+            memcpy(p, sep_str, sep_len);
+            p += sep_len;
+        }
+    }
+    
+    *p = '\0';
+    
+    xc_object_t *result_obj = xc_string_object_create(rt, result);
+    free(result);
+    
+    return result_obj;
 }
 
 /* Type checking */

@@ -84,13 +84,9 @@ echo "生成完整的展开头文件 libxc.h..."
 
 # 创建最终的 libxc.h 文件
 cat > "${INCLUDE_DIR}/libxc.h" << EOF
-/*
- * libxc.h - XC运行时库的公共API头文件 (完全展开版)
- */
 #ifndef LIBXC_H
 #define LIBXC_H
 
-/* 包含必要的标准C库头文件 */
 #include "cosmopolitan.h"
 
 EOF
