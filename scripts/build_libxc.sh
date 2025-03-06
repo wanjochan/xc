@@ -13,6 +13,7 @@ PROJECT_ROOT="$(cd "${SCRIPT_DIR}/.." && pwd)"
 SRC_DIR="${PROJECT_ROOT}/src"
 INCLUDE_DIR="${PROJECT_ROOT}/include"
 LIB_DIR="${PROJECT_ROOT}/lib"
+TMP_DIR="${PROJECT_ROOT}/tmp"
 
 # 设置编译器
 COSMOCC=~/cosmocc/bin/cosmocc
@@ -24,6 +25,7 @@ CFLAGS="-Os -fomit-frame-pointer -fno-pie -fno-pic -fno-common -fno-plt -mcmodel
 # 创建输出目录（如果不存在）
 mkdir -p "${LIB_DIR}"
 mkdir -p "${INCLUDE_DIR}"
+mkdir -p "${TMP_DIR}"
 
 # 编译XC源文件
 echo "编译XC源文件..."
@@ -77,18 +79,68 @@ done
 echo "创建 libxc.a..."
 "${AR}" rcs "${LIB_DIR}/libxc.a" "${OBJECT_FILES[@]}"
 
-# 生成完整的头文件
-echo "生成完整的预处理头文件 libxc.h..."
-"${COSMOCC}" -E -P \
+# 创建一个临时的完整头文件
+echo "生成完整的展开头文件 libxc.h..."
+
+# 创建一个临时的汇总头文件
+cat > "${TMP_DIR}/libxc_all.h" << EOF
+/*
+ * libxc.h - XC运行时库的公共API头文件
+ */
+#ifndef LIBXC_H
+#define LIBXC_H
+
+/* 包含必要的标准C库头文件 */
+#include <stddef.h>  /* size_t */
+#include <stdarg.h>  /* va_list */
+#include <setjmp.h>  /* jmp_buf */
+#include <stdbool.h> /* bool */
+
+/* 直接包含所有需要的XC头文件 */
+#include "${SRC_DIR}/xc/xc.h"
+#include "${SRC_DIR}/xc/xc_types/xc_types.h"
+#include "${SRC_DIR}/xc/xc_gc.h"
+#include "${SRC_DIR}/xc/xc_exception.h"
+#include "${SRC_DIR}/xc/xc_std/xc_std_console.h"
+#include "${SRC_DIR}/xc/xc_std/xc_std_math.h"
+
+#endif /* LIBXC_H */
+EOF
+
+# 使用预处理器展开所有头文件
+"${COSMOCC}" -E -P -C \
     -I"${INCLUDE_DIR}" \
     -I"${SRC_DIR}" \
     -I"${SRC_DIR}/infrax" \
     -I~/cosmocc/include \
-    "${INCLUDE_DIR}/libxc_internal.h" > "${INCLUDE_DIR}/libxc.h"
+    "${TMP_DIR}/libxc_all.h" > "${TMP_DIR}/libxc_expanded.h"
+
+# 提取XC相关的部分（从第195行开始）
+tail -n +195 "${TMP_DIR}/libxc_expanded.h" > "${TMP_DIR}/libxc_xc_part.h"
+
+# 添加头部注释和保护宏
+cat > "${INCLUDE_DIR}/libxc.h" << EOF
+/*
+ * libxc.h - XC运行时库的公共API头文件 (完全展开版)
+ */
+#ifndef LIBXC_H
+#define LIBXC_H
+
+/* 包含必要的标准C库头文件 */
+#include "cosmopolitan.h"
+
+/* XC运行时库的公共API */
+EOF
+
+# 添加XC相关的内容
+cat "${TMP_DIR}/libxc_xc_part.h" >> "${INCLUDE_DIR}/libxc.h"
+
+# 添加结尾保护宏
+echo $'\n#endif /* LIBXC_H */' >> "${INCLUDE_DIR}/libxc.h"
 
 # 显示文件信息
 echo -e "\n生成的静态库信息:"
 ls -la "${LIB_DIR}/libxc.a"
 ls -la "${INCLUDE_DIR}/libxc.h"
 
-echo "libxc.a和libxc.h构建完成!"
+echo "libxc.a和完全展开的libxc.h构建完成!"
