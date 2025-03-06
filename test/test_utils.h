@@ -8,12 +8,6 @@
 #ifndef XC_TEST_UTILS_H
 #define XC_TEST_UTILS_H
 
-// #include <stdio.h>
-// #include <stdlib.h>
-// #include <string.h>
-// #include <assert.h>
-// #include <stdbool.h>
-// #include "../src/xc/xc.h"
 #include "../include/libxc.h"
 
 /* Test case structure */
