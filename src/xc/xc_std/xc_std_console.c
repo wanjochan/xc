@@ -2,7 +2,7 @@
  * xc_std_console.c - 控制台标准库实现
  */
 
-#include "xc.h"
+#include "../xc.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -40,7 +40,7 @@ static char* format_message(int argc, xc_val* argv) {
             item_str = xc.create(XC_TYPE_STRING, "null");
         }
         
-        const char* str = xc_string_get_buffer(item_str);
+        const char* str = xc_string_value(&xc, item_str);
         size_t len = strlen(str);
         
         /* 检查是否需要扩展缓冲区 */
@@ -110,12 +110,12 @@ static xc_val console_time(xc_val self, int argc, xc_val* argv, xc_val closure) 
         return NULL;
     }
     
-    const char* label = xc_string_get_buffer(argv[0]);
+    const char* label = xc_string_value(&xc, argv[0]);
     
     /* 存储当前时间到label属性中 */
     clock_t start_time = clock();
     xc_val time_value = xc.create(XC_TYPE_NUMBER, (double)start_time);
-    xc_object_set_property(self, label, time_value);
+    xc_object_set(&xc, self, label, time_value);
     xc.release(time_value);
     
     return NULL;
@@ -127,10 +127,10 @@ static xc_val console_timeEnd(xc_val self, int argc, xc_val* argv, xc_val closur
         return NULL;
     }
     
-    const char* label = xc_string_get_buffer(argv[0]);
+    const char* label = xc_string_value(&xc, argv[0]);
     
     /* 获取存储的开始时间 */
-    xc_val start_val = xc_object_get_property(self, label);
+    xc_val start_val = xc_object_get(&xc, self, label);
     if (!start_val || !xc.is(start_val, XC_TYPE_NUMBER)) {
         printf("%s: <timer not started>\n", label);
         return NULL;

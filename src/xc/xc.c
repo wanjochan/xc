@@ -4,6 +4,7 @@
 
 
 #include "xc.h"
+#include "xc_error.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -36,7 +37,7 @@ typedef xc_val (*xc_function_handler)(xc_val this_obj, int argc, xc_val* argv, x
 /* 外部函数声明 */
 extern xc_val xc_function_create(xc_function_handler handler, int arg_count, xc_val closure);
 extern xc_val xc_function_get_closure(xc_val obj);
-extern xc_val xc_error_get_stack_trace(xc_val error);
+extern xc_object_t *xc_error_get_stack_trace(xc_runtime_t *rt, xc_object_t *error);
 extern xc_val xc_function_invoke(xc_val func, xc_val this_obj, int argc, xc_val* argv);
 
 /* 执行栈帧结构 */
@@ -1105,7 +1106,7 @@ static xc_val create(int type, ...) {
 }
 
 /* 获取错误的堆栈跟踪 */
-xc_val xc_error_get_stack_trace(xc_val error) {
+xc_object_t *xc_error_get_stack_trace(xc_runtime_t *rt, xc_object_t *error) {
     /* 检查参数 */
     if (!error || !is(error, XC_TYPE_ERROR)) {
         return NULL;
@@ -1122,7 +1123,7 @@ xc_val xc_error_get_stack_trace(xc_val error) {
     while (frame != NULL) {
         /* 为每一帧创建一个包含信息的对象（这里简化为字符串） */
         char frame_info[256];
-        snprintf(frame_info, sizeof(frame_info), "%s (%s:%d)", 
+        snprintf(frame_info, sizeof(frame_info), "%s (%s:%d)",
                  frame->func_name ? frame->func_name : "unknown",
                  frame->file_name ? frame->file_name : "unknown",
                  frame->line_number);
@@ -1140,7 +1141,7 @@ xc_val xc_error_get_stack_trace(xc_val error) {
         frame = frame->prev;
     }
     
-    return stack_array;
+    return (xc_object_t *)stack_array;
 }
 
 xc_runtime_t xc = {

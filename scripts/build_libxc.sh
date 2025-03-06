@@ -19,7 +19,7 @@ COSMOCC="${PROJECT_ROOT}/../Downloads/cosmocc-4.0.2/bin/cosmocc"
 AR="${PROJECT_ROOT}/../Downloads/cosmocc-4.0.2/bin/ar"
 
 # 设置编译选项
-CFLAGS="-Os -fomit-frame-pointer -fno-pie -fno-pic -fno-common -fno-plt -mcmodel=large -finline-functions -I${SRC_DIR} -I${INCLUDE_DIR} -I${PROJECT_ROOT}/../Downloads/cosmocc-4.0.2/include"
+CFLAGS="-Os -fomit-frame-pointer -fno-pie -fno-pic -fno-common -fno-plt -mcmodel=large -finline-functions -I${SRC_DIR} -I${SRC_DIR}/infrax -I${INCLUDE_DIR} -I${PROJECT_ROOT}/../Downloads/cosmocc-4.0.2/include"
 
 # 创建输出目录（如果不存在）
 mkdir -p "${LIB_DIR}"
@@ -42,17 +42,25 @@ SOURCE_FILES=(
     # 核心运行时
     "${SRC_DIR}/xc/xc.c"
     "${SRC_DIR}/xc/xc_init.c"
-    "${SRC_DIR}/xc/xc_string.c"
-    "${SRC_DIR}/xc/xc_null.c"
-    "${SRC_DIR}/xc/xc_boolean.c"
-    "${SRC_DIR}/xc/xc_number.c"
-    "${SRC_DIR}/xc/xc_function.c"
-    "${SRC_DIR}/xc/xc_array.c"
-    "${SRC_DIR}/xc/xc_object.c"
+    "${SRC_DIR}/xc/xc_gc.c"
+    "${SRC_DIR}/xc/xc_exception.c"
+    
+    # 类型系统
+    "${SRC_DIR}/xc/xc_types/xc_null.c"
+    "${SRC_DIR}/xc/xc_types/xc_boolean.c"
+    "${SRC_DIR}/xc/xc_types/xc_number.c"
+    "${SRC_DIR}/xc/xc_types/xc_string.c"
+    "${SRC_DIR}/xc/xc_types/xc_function.c"
+    "${SRC_DIR}/xc/xc_types/xc_array.c"
+    "${SRC_DIR}/xc/xc_types/xc_object.c"
+    
+    # 错误处理和虚拟机
     "${SRC_DIR}/xc/xc_error.c"
     "${SRC_DIR}/xc/xc_vm.c"
-    "${SRC_DIR}/xc/xc_std_console.c"
-    "${SRC_DIR}/xc/xc_std_math.c"
+    
+    # 标准库
+    "${SRC_DIR}/xc/xc_std/xc_std_console.c"
+    "${SRC_DIR}/xc/xc_std/xc_std_math.c"
 )
 
 # 编译所有源文件为目标文件
@@ -71,8 +79,11 @@ echo "创建 libxc.a..."
 # 复制头文件到include目录
 echo "复制头文件到include目录..."
 cp "${SRC_DIR}/xc/xc.h" "${INCLUDE_DIR}/"
-cp "${SRC_DIR}/xc/xc_std_console.h" "${INCLUDE_DIR}/"
-cp "${SRC_DIR}/xc/xc_std_math.h" "${INCLUDE_DIR}/"
+cp "${SRC_DIR}/xc/xc_gc.h" "${INCLUDE_DIR}/"
+cp "${SRC_DIR}/xc/xc_exception.h" "${INCLUDE_DIR}/"
+cp "${SRC_DIR}/xc/xc_types/xc_types.h" "${INCLUDE_DIR}/"
+cp "${SRC_DIR}/xc/xc_std/xc_std_console.h" "${INCLUDE_DIR}/"
+cp "${SRC_DIR}/xc/xc_std/xc_std_math.h" "${INCLUDE_DIR}/"
 
 # 创建一个合并的libxc.h头文件
 echo "创建合并的libxc.h头文件..."
@@ -84,6 +95,9 @@ cat > "${INCLUDE_DIR}/libxc.h" << EOF
 #define LIBXC_H
 
 #include "xc.h"
+#include "xc_types.h"
+#include "xc_gc.h"
+#include "xc_exception.h"
 #include "xc_std_console.h"
 #include "xc_std_math.h"
 

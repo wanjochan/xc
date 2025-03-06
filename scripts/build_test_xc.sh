@@ -18,7 +18,7 @@ TEST_DIR="${PROJECT_ROOT}/test"
 COSMOCC="${PROJECT_ROOT}/../Downloads/cosmocc-4.0.2/bin/cosmocc"
 
 # 设置编译选项
-CFLAGS="-Os -fomit-frame-pointer -fno-pie -fno-pic -fno-common -fno-plt -mcmodel=large -finline-functions -I${PROJECT_ROOT}/src -I${PROJECT_ROOT}/include -I${SRC_DIR} -I${PROJECT_ROOT}/../Downloads/cosmocc-4.0.2/include"
+CFLAGS="-Os -fomit-frame-pointer -fno-pie -fno-pic -fno-common -fno-plt -mcmodel=large -finline-functions -I${PROJECT_ROOT}/src -I${PROJECT_ROOT}/src/infrax -I${PROJECT_ROOT}/include -I${SRC_DIR} -I${PROJECT_ROOT}/../Downloads/cosmocc-4.0.2/include"
 LDFLAGS="-static -Wl,--gc-sections -Wl,--build-id=none"
 
 # 创建bin目录（如果不存在）
@@ -42,27 +42,37 @@ SOURCE_FILES=(
     # 核心运行时
     "${SRC_DIR}/xc/xc.c"
     "${SRC_DIR}/xc/xc_init.c"
-    "${SRC_DIR}/xc/xc_string.c"
-    "${SRC_DIR}/xc/xc_null.c"
-    "${SRC_DIR}/xc/xc_boolean.c"
-    "${SRC_DIR}/xc/xc_number.c"
-    "${SRC_DIR}/xc/xc_function.c"
-    "${SRC_DIR}/xc/xc_array.c"
-    "${SRC_DIR}/xc/xc_object.c"
+    "${SRC_DIR}/xc/xc_gc.c"
+    "${SRC_DIR}/xc/xc_exception.c"
+    
+    # 类型系统
+    "${SRC_DIR}/xc/xc_types/xc_null.c"
+    "${SRC_DIR}/xc/xc_types/xc_boolean.c"
+    "${SRC_DIR}/xc/xc_types/xc_number.c"
+    "${SRC_DIR}/xc/xc_types/xc_string.c"
+    "${SRC_DIR}/xc/xc_types/xc_function.c"
+    "${SRC_DIR}/xc/xc_types/xc_array.c"
+    "${SRC_DIR}/xc/xc_types/xc_object.c"
+    
+    # 错误处理和虚拟机
     "${SRC_DIR}/xc/xc_error.c"
     "${SRC_DIR}/xc/xc_vm.c"
-    "${SRC_DIR}/xc/xc_std_console.c"
-    "${SRC_DIR}/xc/xc_std_math.c"
+    
+    # 标准库
+    "${SRC_DIR}/xc/xc_std/xc_std_console.c"
+    "${SRC_DIR}/xc/xc_std/xc_std_math.c"
     
     # 测试框架
-    "${SRC_DIR}/xc/test_utils.c"
+    "${TEST_DIR}/test_utils.c"
     
     # 测试套件
-    "${SRC_DIR}/xc/test_xc_types.c"
-    "${SRC_DIR}/xc/test_xc_gc.c"
-    "${SRC_DIR}/xc/test_xc_exception.c"
-    "${SRC_DIR}/xc/test_xc_composite_types.c"
-    "${SRC_DIR}/xc/test_xc.c"
+    "${TEST_DIR}/test_xc.c"
+    "${TEST_DIR}/test_xc_types.c"
+    "${TEST_DIR}/test_xc_gc.c"
+    "${TEST_DIR}/test_xc_exception.c"
+    "${TEST_DIR}/test_xc_composite_types.c"
+    "${TEST_DIR}/test_xc_object.c"
+    "${TEST_DIR}/test_xc_stdc.c"
 )
 
 # 编译所有源文件

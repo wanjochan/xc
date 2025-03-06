@@ -2,7 +2,7 @@
  * xc_std_math.c - 数学标准库实现
  */
 
-#include "xc.h"
+#include "../xc.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>

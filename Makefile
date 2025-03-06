@@ -17,7 +17,7 @@ AR := $(PROJECT_ROOT)/../Downloads/cosmocc-4.0.2/bin/ar
 
 # 编译选项
 CFLAGS := -Os -fomit-frame-pointer -fno-pie -fno-pic -fno-common -fno-plt -mcmodel=large -finline-functions
-INCLUDES := -I$(SRC_DIR) -I$(INCLUDE_DIR) -I$(PROJECT_ROOT)/../Downloads/cosmocc-4.0.2/include
+INCLUDES := -I$(SRC_DIR) -I$(SRC_DIR)/infrax -I$(INCLUDE_DIR) -I$(PROJECT_ROOT)/../Downloads/cosmocc-4.0.2/include
 LDFLAGS := -static -Wl,--gc-sections -Wl,--build-id=none
 
 # 默认目标

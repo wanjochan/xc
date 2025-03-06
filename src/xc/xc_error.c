@@ -1,175 +1,178 @@
 /*
- * xc_error.c - 错误类型实现
+ * xc_error.c - Error type implementation
  */
 
 #include "xc.h"
+#include "xc_error.h"
+#include "xc_object.h"
+#include "xc_gc.h"
+#include "xc_types/xc_types.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <assert.h>
 
-
-typedef int xc_error_code_t;
-/* 错误类型数据结构 */
+/* Error object structure */
 typedef struct {
-    xc_error_code_t code;      // 错误代码
-    char message[128];         // 错误消息，固定长度
-    xc_val stack_trace;        // 栈跟踪
-    xc_val cause;              // 原因异常（异常链）
+    xc_object_t base;          /* Must be first */
+    xc_error_code_t code;      /* Error code */
+    xc_object_t *message;      /* String message */
+    xc_object_t *stack_trace;  /* Array of stack frames */
+    xc_object_t *cause;        /* Cause error (error chain) */
 } xc_error_t;
 
-/* 错误类型方法 */
-static xc_val error_to_string(xc_val self, xc_val arg) {
-    xc_error_t* error = (xc_error_t*)self;
-    return xc.create(XC_TYPE_STRING, error->message);
-}
-
-/* 获取错误代码 */
-static xc_val error_get_code(xc_val self, xc_val arg) {
-    xc_error_t* error = (xc_error_t*)self;
-    return xc.create(XC_TYPE_NUMBER, (double)error->code);
-}
-
-/* 获取错误消息 */
-static xc_val error_get_message(xc_val self, xc_val arg) {
-    xc_error_t* error = (xc_error_t*)self;
-    return xc.create(XC_TYPE_STRING, error->message);
-}
-
-/* 获取栈跟踪 */
-static xc_val error_get_stack_trace(xc_val self, xc_val arg) {
-    xc_error_t* error = (xc_error_t*)self;
-    return error->stack_trace ? error->stack_trace : xc.create(XC_TYPE_ARRAY, 0);
-}
-
-/* 设置栈跟踪 */
-static xc_val error_set_stack_trace(xc_val self, xc_val arg) {
-    if (!arg || !xc.is(arg, XC_TYPE_ARRAY)) {
-        return xc.create(XC_TYPE_ERROR, XC_ERR_TYPE, "栈跟踪必须是数组");
+/* Error methods */
+static void error_mark(xc_runtime_t *rt, xc_object_t *obj) {
+    xc_error_t *err = (xc_error_t *)obj;
+    if (err->message) {
+        xc_gc_mark(rt, err->message);
     }
-    
-    xc_error_t* error = (xc_error_t*)self;
-    error->stack_trace = arg;
-    return xc.create(XC_TYPE_NULL);
-}
-
-/* 获取原因异常 */
-static xc_val error_get_cause(xc_val self, xc_val arg) {
-    xc_error_t* error = (xc_error_t*)self;
-    return error->cause ? error->cause : xc.create(XC_TYPE_NULL);
-}
-
-/* 设置原因异常 */
-static xc_val error_set_cause(xc_val self, xc_val arg) {
-    if (arg && !xc.is(arg, XC_TYPE_ERROR)) {
-        return xc.create(XC_TYPE_ERROR, XC_ERR_TYPE, "cause必须是错误类型");
+    if (err->stack_trace) {
+        xc_gc_mark(rt, err->stack_trace);
     }
-    
-    xc_error_t* error = (xc_error_t*)self;
-    error->cause = arg;
-    return xc.create(XC_TYPE_NULL);
-}
-
-/* 错误类型的 GC 标记方法 */
-static void error_marker(xc_val self, void (*mark_func)(xc_val)) {
-    xc_error_t* error = (xc_error_t*)self;
-    if (error->stack_trace) {
-        mark_func(error->stack_trace);
-    }
-    if (error->cause) {
-        mark_func(error->cause);
+    if (err->cause) {
+        xc_gc_mark(rt, err->cause);
     }
 }
 
-/* 错误类型的销毁方法 */
-static int error_destroy(xc_val self) {
-    // 没有需要释放的资源
-    return 0;
+static void error_free(xc_runtime_t *rt, xc_object_t *obj) {
+    xc_error_t *err = (xc_error_t *)obj;
+    if (err->message) {
+        xc_gc_free(rt, err->message);
+    }
+    if (err->stack_trace) {
+        xc_gc_free(rt, err->stack_trace);
+    }
+    if (err->cause) {
+        xc_gc_free(rt, err->cause);
+    }
 }
 
-/* 错误类型初始化 */
-static void error_initialize(void) {
-    // 注册方法
-    xc.register_method(XC_TYPE_ERROR, "toString", error_to_string);
-    xc.register_method(XC_TYPE_ERROR, "getCode", error_get_code);
-    xc.register_method(XC_TYPE_ERROR, "getMessage", error_get_message);
-    xc.register_method(XC_TYPE_ERROR, "getStackTrace", error_get_stack_trace);
-    xc.register_method(XC_TYPE_ERROR, "setStackTrace", error_set_stack_trace);
-    xc.register_method(XC_TYPE_ERROR, "getCause", error_get_cause);
-    xc.register_method(XC_TYPE_ERROR, "setCause", error_set_cause);
-}
-
-/* 错误类型创建函数 */
-static xc_val error_creator(int type, va_list args) {
-    // 获取错误代码和消息
-    xc_error_code_t code = va_arg(args, xc_error_code_t);
-    const char* message = va_arg(args, const char*);
-    
-    // 分配错误对象
-    xc_val obj = xc.alloc_object(type, sizeof(xc_error_t));
-    if (!obj) return NULL;
-    
-    // 初始化错误对象
-    xc_error_t* error = (xc_error_t*)obj;
-    error->code = code;
-    error->stack_trace = NULL;
-    error->cause = NULL;  // 初始化cause为NULL
-    
-    // 复制消息，确保不会溢出
-    if (message) {
-        strncpy(error->message, message, sizeof(error->message) - 1);
-        error->message[sizeof(error->message) - 1] = '\0';
-    } else {
-        error->message[0] = '\0';
+static bool error_equal(xc_runtime_t *rt, xc_object_t *a, xc_object_t *b) {
+    if (!xc_is_error(rt, b)) {
+        return false;
     }
     
-    return obj;
-}
-
-/* 注册错误类型 */
-int _xc_type_error = XC_TYPE_ERROR;
-
-__attribute__((constructor)) static void register_error_type(void) {
-    /* 定义类型生命周期管理接口 */
-    static xc_type_lifecycle_t lifecycle = {
-        .initializer = error_initialize,
-        .cleaner = NULL,
-        .creator = error_creator,
-        .destroyer = error_destroy,
-        .marker = error_marker,
-        .allocator = NULL
-    };
+    xc_error_t *err_a = (xc_error_t *)a;
+    xc_error_t *err_b = (xc_error_t *)b;
     
-    /* 注册类型 */
-    _xc_type_error = xc.register_type("error", &lifecycle);
-    // error_initialize();
+    /* Compare error codes first */
+    if (err_a->code != err_b->code) {
+        return false;
+    }
+    
+    /* Compare messages */
+    return xc_equal(rt, err_a->message, err_b->message);
 }
 
-/* 创建错误对象 */
-xc_val xc_error_create(xc_error_code_t code, const char* message) {
-    return xc.create(XC_TYPE_ERROR, code, message);
+static int error_compare(xc_runtime_t *rt, xc_object_t *a, xc_object_t *b) {
+    if (!xc_is_error(rt, b)) {
+        return 1; /* Errors are greater than non-errors */
+    }
+    
+    xc_error_t *err_a = (xc_error_t *)a;
+    xc_error_t *err_b = (xc_error_t *)b;
+    
+    /* Compare by error code first */
+    if (err_a->code < err_b->code) return -1;
+    if (err_a->code > err_b->code) return 1;
+    
+    /* If codes are equal, compare messages */
+    return xc_compare(rt, err_a->message, err_b->message);
 }
 
-/* 获取错误代码 */
-xc_error_code_t xc_error_get_code(xc_val error) {
-    if (!xc.is(error, XC_TYPE_ERROR)) return XC_ERR_NONE;
-    return ((xc_error_t*)error)->code;
+/* Type descriptor for error type */
+static xc_type_t error_type = {
+    .name = "error",
+    .flags = XC_TYPE_PRIMITIVE,
+    .mark = error_mark,
+    .free = error_free,
+    .equal = error_equal,
+    .compare = error_compare
+};
+
+/* Register error type */
+void xc_register_error_type(xc_runtime_t *rt) {
+    XC_RUNTIME_EXT(rt)->error_type = &error_type;
 }
 
-/* 获取错误消息 */
-const char* xc_error_get_message(xc_val error) {
-    if (!xc.is(error, XC_TYPE_ERROR)) return NULL;
-    return ((xc_error_t*)error)->message;
+/* Create error object */
+xc_object_t *xc_error_create(xc_runtime_t *rt, xc_error_code_t code, const char *message) {
+    /* 使用 xc_gc_alloc 分配对象，并传递类型索引 */
+    xc_error_t *err = (xc_error_t *)xc_gc_alloc(rt, sizeof(xc_error_t), XC_TYPE_ERROR);
+    if (!err) {
+        return NULL;
+    }
+    
+    /* 设置正确的类型指针 */
+    ((xc_object_t *)err)->type = XC_RUNTIME_EXT(rt)->error_type;
+    
+    err->code = code;
+    err->message = message ? xc_string_create(rt, message) : NULL;
+    err->stack_trace = NULL;
+    err->cause = NULL;
+    
+    return (xc_object_t *)err;
 }
 
-/* 设置错误栈跟踪 */
-void xc_error_set_stack_trace(xc_val error, xc_val stack_trace) {
-    if (!xc.is(error, XC_TYPE_ERROR) || !stack_trace) return;
-    xc.call(error, "setStackTrace", stack_trace);
+/* Error operations */
+xc_error_code_t xc_error_get_code(xc_runtime_t *rt, xc_object_t *error) {
+    assert(xc_is_error(rt, error));
+    xc_error_t *err = (xc_error_t *)error;
+    return err->code;
 }
 
-/* 获取错误栈跟踪 */
-xc_val xc_error_get_stack_trace(xc_val error) {
-    if (!xc.is(error, XC_TYPE_ERROR)) return NULL;
-    return xc.call(error, "getStackTrace", NULL);
+const char *xc_error_get_message(xc_runtime_t *rt, xc_object_t *error) {
+    assert(xc_is_error(rt, error));
+    xc_error_t *err = (xc_error_t *)error;
+    return err->message ? xc_string_value(rt, err->message) : "";
+}
+
+void xc_error_set_stack_trace(xc_runtime_t *rt, xc_object_t *error, xc_object_t *stack_trace) {
+    assert(xc_is_error(rt, error));
+    assert(!stack_trace || xc_is_array(rt, stack_trace));
+    
+    xc_error_t *err = (xc_error_t *)error;
+    
+    if (err->stack_trace) {
+        xc_gc_free(rt, err->stack_trace);
+    }
+    
+    err->stack_trace = stack_trace;
+    if (stack_trace) {
+        xc_gc_add_ref(rt, stack_trace);
+    }
+}
+
+xc_object_t *xc_error_get_stack_trace(xc_runtime_t *rt, xc_object_t *error) {
+    assert(xc_is_error(rt, error));
+    xc_error_t *err = (xc_error_t *)error;
+    return err->stack_trace;
+}
+
+void xc_error_set_cause(xc_runtime_t *rt, xc_object_t *error, xc_object_t *cause) {
+    assert(xc_is_error(rt, error));
+    assert(!cause || xc_is_error(rt, cause));
+    
+    xc_error_t *err = (xc_error_t *)error;
+    
+    if (err->cause) {
+        xc_gc_free(rt, err->cause);
+    }
+    
+    err->cause = cause;
+    if (cause) {
+        xc_gc_add_ref(rt, cause);
+    }
+}
+
+xc_object_t *xc_error_get_cause(xc_runtime_t *rt, xc_object_t *error) {
+    assert(xc_is_error(rt, error));
+    xc_error_t *err = (xc_error_t *)error;
+    return err->cause;
+}
+
+/* Type checking */
+bool xc_is_error(xc_runtime_t *rt, xc_object_t *obj) {
+    return obj && obj->type == XC_RUNTIME_EXT(rt)->error_type;
 }
