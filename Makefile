@@ -1,5 +1,7 @@
 # XC项目Makefile
 
+# ~/cosmocc/bin/make
+
 # 项目根目录
 PROJECT_ROOT := $(shell pwd)
 
