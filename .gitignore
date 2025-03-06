@@ -3,3 +3,4 @@
 .aarch64
 test/*.exe
 .env
+release/
