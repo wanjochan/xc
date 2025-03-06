@@ -13,13 +13,14 @@ PROJECT_ROOT="$(cd "${SCRIPT_DIR}/.." && pwd)"
 SRC_DIR="${PROJECT_ROOT}/src"
 BIN_DIR="${PROJECT_ROOT}/bin"
 TEST_DIR="${PROJECT_ROOT}/test"
+LIB_DIR="${PROJECT_ROOT}/lib"
 
 # 设置编译器
 COSMOCC="${PROJECT_ROOT}/../Downloads/cosmocc-4.0.2/bin/cosmocc"
 
 # 设置编译选项
 CFLAGS="-Os -fomit-frame-pointer -fno-pie -fno-pic -fno-common -fno-plt -mcmodel=large -finline-functions -I${PROJECT_ROOT}/src -I${PROJECT_ROOT}/src/infrax -I${PROJECT_ROOT}/include -I${SRC_DIR} -I${PROJECT_ROOT}/../Downloads/cosmocc-4.0.2/include"
-LDFLAGS="-static -Wl,--gc-sections -Wl,--build-id=none"
+LDFLAGS="-static -Wl,--gc-sections -Wl,--build-id=none -L${LIB_DIR} -lxc"
 
 # 创建bin目录（如果不存在）
 mkdir -p "${BIN_DIR}"
@@ -28,40 +29,8 @@ mkdir -p "${TEST_DIR}"
 # 编译XC测试程序
 echo "编译XC测试程序..."
 
-# 编译源文件列表（按依赖顺序排序）
-SOURCE_FILES=(
-    # infrax层
-    "${SRC_DIR}/infrax/InfraxCore.c"
-    "${SRC_DIR}/infrax/InfraxMemory.c"
-    "${SRC_DIR}/infrax/InfraxLog.c"
-    "${SRC_DIR}/infrax/InfraxThread.c"
-    "${SRC_DIR}/infrax/InfraxSync.c"
-    "${SRC_DIR}/infrax/InfraxAsync.c"
-    "${SRC_DIR}/infrax/InfraxNet.c"
-    
-    # 核心运行时
-    "${SRC_DIR}/xc/xc.c"
-    "${SRC_DIR}/xc/xc_init.c"
-    "${SRC_DIR}/xc/xc_gc.c"
-    "${SRC_DIR}/xc/xc_exception.c"
-    
-    # 类型系统
-    "${SRC_DIR}/xc/xc_types/xc_null.c"
-    "${SRC_DIR}/xc/xc_types/xc_boolean.c"
-    "${SRC_DIR}/xc/xc_types/xc_number.c"
-    "${SRC_DIR}/xc/xc_types/xc_string.c"
-    "${SRC_DIR}/xc/xc_types/xc_function.c"
-    "${SRC_DIR}/xc/xc_types/xc_array.c"
-    "${SRC_DIR}/xc/xc_types/xc_object.c"
-    
-    # 错误处理和虚拟机
-    "${SRC_DIR}/xc/xc_error.c"
-    "${SRC_DIR}/xc/xc_vm.c"
-    
-    # 标准库
-    "${SRC_DIR}/xc/xc_std/xc_std_console.c"
-    "${SRC_DIR}/xc/xc_std/xc_std_math.c"
-    
+# 编译测试文件列表
+TEST_SOURCE_FILES=(
     # 测试框架
     "${TEST_DIR}/test_utils.c"
     
@@ -75,8 +44,8 @@ SOURCE_FILES=(
     "${TEST_DIR}/test_xc_stdc.c"
 )
 
-# 编译所有源文件
-"${COSMOCC}" ${CFLAGS} "${SOURCE_FILES[@]}" ${LDFLAGS} -o "${BIN_DIR}/test_xc.exe"
+# 编译所有测试源文件
+"${COSMOCC}" ${CFLAGS} "${TEST_SOURCE_FILES[@]}" ${LDFLAGS} -o "${BIN_DIR}/test_xc.exe"
 
 # 显示文件信息
 echo -e "\n生成的可执行文件信息:"

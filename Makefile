@@ -12,12 +12,12 @@ TEST_DIR := $(PROJECT_ROOT)/test
 SCRIPTS_DIR := $(PROJECT_ROOT)/scripts
 
 # 编译器设置
-COSMOCC := $(PROJECT_ROOT)/../Downloads/cosmocc-4.0.2/bin/cosmocc
-AR := $(PROJECT_ROOT)/../Downloads/cosmocc-4.0.2/bin/ar
+COSMOCC := ~/cosmocc/bin/cosmocc
+AR := ~/cosmocc/bin/cosmoar
 
 # 编译选项
 CFLAGS := -Os -fomit-frame-pointer -fno-pie -fno-pic -fno-common -fno-plt -mcmodel=large -finline-functions
-INCLUDES := -I$(SRC_DIR) -I$(SRC_DIR)/infrax -I$(INCLUDE_DIR) -I$(PROJECT_ROOT)/../Downloads/cosmocc-4.0.2/include
+INCLUDES := -I$(SRC_DIR) -I$(SRC_DIR)/infrax -I$(INCLUDE_DIR) -I~/cosmocc/include
 LDFLAGS := -static -Wl,--gc-sections -Wl,--build-id=none
 
 # 默认目标
@@ -62,3 +62,4 @@ help:
 	@echo "  test     - 构建并运行测试程序"
 	@echo "  clean    - 清理所有构建产物"
 	@echo "  help     - 显示此帮助信息"
+

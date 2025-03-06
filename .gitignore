@@ -1,2 +1,5 @@
 *.o
+*.dbg
+.aarch64
+test/*.exe
 

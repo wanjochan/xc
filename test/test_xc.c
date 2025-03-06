@@ -13,6 +13,8 @@ void test_xc_types(void);
 void test_xc_gc(void);
 void test_xc_exception(void);
 void register_composite_type_tests(void);
+void register_object_tests(void);
+void register_stdc_tests(void);
 
 /* Simple print function for debugging */
 static void print_val(xc_val val) {
@@ -63,6 +65,12 @@ int main(int argc, char* argv[]) {
     
     /* Register and run composite type tests */
     register_composite_type_tests();
+    
+    /* Register object tests */
+    register_object_tests();
+    
+    /* Register standard library tests */
+    register_stdc_tests();
     
     /* Run all registered tests */
     test_run_all();

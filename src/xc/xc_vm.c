@@ -149,8 +149,8 @@ static xc_val vm_creator(int type, va_list args) {
 }
 
 /* 注册 VM 类型 */
-#define XC_TYPE_VM 8  // 添加到现有类型定义中
-int _xc_type_vm = XC_TYPE_VM;
+#define XC_TYPE_VM_LOCAL 10  // 与xc.h中的定义保持一致
+int _xc_type_vm = XC_TYPE_VM_LOCAL;
 
 __attribute__((constructor)) static void register_vm_type(void) {
     /* 定义类型生命周期管理接口 */

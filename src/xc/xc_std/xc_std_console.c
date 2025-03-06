@@ -3,6 +3,8 @@
  */
 
 #include "../xc.h"
+#include "../xc_types/xc_types.h"
+#include "../xc_object.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -144,7 +146,7 @@ static xc_val console_timeEnd(xc_val self, int argc, xc_val* argv, xc_val closur
     printf("%s: %.2f ms\n", label, elapsed);
     
     /* 移除存储的时间 */
-    xc_object_set_property(self, label, NULL);
+    xc_object_set(&xc, self, label, NULL);
     
     return NULL;
 }
@@ -155,23 +157,23 @@ static xc_val create_console_object(void) {
     
     /* 添加方法 */
     xc_val log_func = xc.create(XC_TYPE_FUNC, console_log, -1, NULL);
-    xc_object_set_property(obj, "log", log_func);
+    xc_object_set(&xc, obj, "log", log_func);
     xc.release(log_func);
     
     xc_val error_func = xc.create(XC_TYPE_FUNC, console_error, -1, NULL);
-    xc_object_set_property(obj, "error", error_func);
+    xc_object_set(&xc, obj, "error", error_func);
     xc.release(error_func);
     
     xc_val warn_func = xc.create(XC_TYPE_FUNC, console_warn, -1, NULL);
-    xc_object_set_property(obj, "warn", warn_func);
+    xc_object_set(&xc, obj, "warn", warn_func);
     xc.release(warn_func);
     
     xc_val time_func = xc.create(XC_TYPE_FUNC, console_time, 1, NULL);
-    xc_object_set_property(obj, "time", time_func);
+    xc_object_set(&xc, obj, "time", time_func);
     xc.release(time_func);
     
     xc_val timeEnd_func = xc.create(XC_TYPE_FUNC, console_timeEnd, 1, NULL);
-    xc_object_set_property(obj, "timeEnd", timeEnd_func);
+    xc_object_set(&xc, obj, "timeEnd", timeEnd_func);
     xc.release(timeEnd_func);
     
     return obj;
@@ -190,9 +192,10 @@ void xc_std_console_initialize(void) {
     /* 创建Console对象 */
     console_obj = create_console_object();
     
-    /* 将Console对象添加到全局对象 */
-    xc_val global = xc.get_global_object();
-    xc_object_set_property(global, "console", console_obj);
+    /* 注意：在当前版本中，我们不将console对象添加到全局对象
+     * 因为全局对象访问机制尚未实现
+     * 用户需要通过xc_std_get_console()函数获取console对象
+     */
 }
 
 /* 清理Console库 */

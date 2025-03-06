@@ -15,11 +15,11 @@ INCLUDE_DIR="${PROJECT_ROOT}/include"
 LIB_DIR="${PROJECT_ROOT}/lib"
 
 # 设置编译器
-COSMOCC="${PROJECT_ROOT}/../Downloads/cosmocc-4.0.2/bin/cosmocc"
-AR="${PROJECT_ROOT}/../Downloads/cosmocc-4.0.2/bin/ar"
+COSMOCC=~/cosmocc/bin/cosmocc
+AR=~/cosmocc/bin/cosmoar
 
 # 设置编译选项
-CFLAGS="-Os -fomit-frame-pointer -fno-pie -fno-pic -fno-common -fno-plt -mcmodel=large -finline-functions -I${SRC_DIR} -I${SRC_DIR}/infrax -I${INCLUDE_DIR} -I${PROJECT_ROOT}/../Downloads/cosmocc-4.0.2/include"
+CFLAGS="-Os -fomit-frame-pointer -fno-pie -fno-pic -fno-common -fno-plt -mcmodel=large -finline-functions -I${SRC_DIR} -I${SRC_DIR}/infrax -I${INCLUDE_DIR} -I~/cosmocc/include"
 
 # 创建输出目录（如果不存在）
 mkdir -p "${LIB_DIR}"
@@ -53,6 +53,7 @@ SOURCE_FILES=(
     "${SRC_DIR}/xc/xc_types/xc_function.c"
     "${SRC_DIR}/xc/xc_types/xc_array.c"
     "${SRC_DIR}/xc/xc_types/xc_object.c"
+    "${SRC_DIR}/xc/xc_types/xc_compare.c"
     
     # 错误处理和虚拟机
     "${SRC_DIR}/xc/xc_error.c"

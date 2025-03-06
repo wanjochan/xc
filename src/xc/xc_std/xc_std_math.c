@@ -3,6 +3,9 @@
  */
 
 #include "../xc.h"
+#include "../xc_types/xc_types.h"
+#include "../xc_error.h"
+#include "../xc_object.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -19,7 +22,7 @@ static xc_val math_abs(xc_val self, va_list* args) {
     xc_val num = va_arg(*args, xc_val);
     
     if (!xc.is(num, XC_TYPE_NUMBER)) {
-        return xc.error("Math.abs requires a number argument");
+        return xc.create(XC_TYPE_ERROR, XC_ERR_TYPE, "Math.abs requires a number argument");
     }
     
     double value = *(double*)num;
@@ -32,7 +35,7 @@ static xc_val math_max(xc_val self, va_list* args) {
     xc_val b = va_arg(*args, xc_val);
     
     if (!xc.is(a, XC_TYPE_NUMBER) || !xc.is(b, XC_TYPE_NUMBER)) {
-        return xc.error("Math.max requires number arguments");
+        return xc.create(XC_TYPE_ERROR, XC_ERR_TYPE, "Math.max requires number arguments");
     }
     
     double value_a = *(double*)a;
@@ -47,7 +50,7 @@ static xc_val math_min(xc_val self, va_list* args) {
     xc_val b = va_arg(*args, xc_val);
     
     if (!xc.is(a, XC_TYPE_NUMBER) || !xc.is(b, XC_TYPE_NUMBER)) {
-        return xc.error("Math.min requires number arguments");
+        return xc.create(XC_TYPE_ERROR, XC_ERR_TYPE, "Math.min requires number arguments");
     }
     
     double value_a = *(double*)a;
@@ -61,7 +64,7 @@ static xc_val math_round(xc_val self, va_list* args) {
     xc_val num = va_arg(*args, xc_val);
     
     if (!xc.is(num, XC_TYPE_NUMBER)) {
-        return xc.error("Math.round requires a number argument");
+        return xc.create(XC_TYPE_ERROR, XC_ERR_TYPE, "Math.round requires a number argument");
     }
     
     double value = *(double*)num;
@@ -73,7 +76,7 @@ static xc_val math_floor(xc_val self, va_list* args) {
     xc_val num = va_arg(*args, xc_val);
     
     if (!xc.is(num, XC_TYPE_NUMBER)) {
-        return xc.error("Math.floor requires a number argument");
+        return xc.create(XC_TYPE_ERROR, XC_ERR_TYPE, "Math.floor requires a number argument");
     }
     
     double value = *(double*)num;
@@ -85,7 +88,7 @@ static xc_val math_ceil(xc_val self, va_list* args) {
     xc_val num = va_arg(*args, xc_val);
     
     if (!xc.is(num, XC_TYPE_NUMBER)) {
-        return xc.error("Math.ceil requires a number argument");
+        return xc.create(XC_TYPE_ERROR, XC_ERR_TYPE, "Math.ceil requires a number argument");
     }
     
     double value = *(double*)num;
@@ -111,7 +114,7 @@ static xc_val math_pow(xc_val self, va_list* args) {
     xc_val exponent = va_arg(*args, xc_val);
     
     if (!xc.is(base, XC_TYPE_NUMBER) || !xc.is(exponent, XC_TYPE_NUMBER)) {
-        return xc.error("Math.pow requires number arguments");
+        return xc.create(XC_TYPE_ERROR, XC_ERR_TYPE, "Math.pow requires number arguments");
     }
     
     double base_val = *(double*)base;
@@ -125,12 +128,12 @@ static xc_val math_sqrt(xc_val self, va_list* args) {
     xc_val num = va_arg(*args, xc_val);
     
     if (!xc.is(num, XC_TYPE_NUMBER)) {
-        return xc.error("Math.sqrt requires a number argument");
+        return xc.create(XC_TYPE_ERROR, XC_ERR_TYPE, "Math.sqrt requires a number argument");
     }
     
     double value = *(double*)num;
     if (value < 0) {
-        return xc.error("Math.sqrt cannot be called with negative numbers");
+        return xc.create(XC_TYPE_ERROR, XC_ERR_VALUE, "Math.sqrt cannot be called with negative numbers");
     }
     
     return xc.create(XC_TYPE_NUMBER, sqrt(value));
@@ -141,19 +144,50 @@ static xc_val create_math_object(void) {
     xc_val obj = xc.create(XC_TYPE_OBJECT);
     
     /* 添加常量 */
-    xc_object_set_property(obj, "PI", xc.create(XC_TYPE_NUMBER, M_PI));
-    xc_object_set_property(obj, "E", xc.create(XC_TYPE_NUMBER, M_E));
+    xc_val pi_val = xc.create(XC_TYPE_NUMBER, M_PI);
+    xc_object_set(&xc, obj, "PI", pi_val);
+    xc.release(pi_val);
+    
+    xc_val e_val = xc.create(XC_TYPE_NUMBER, M_E);
+    xc_object_set(&xc, obj, "E", e_val);
+    xc.release(e_val);
     
     /* 添加函数 */
-    xc_object_set_property(obj, "abs", xc.func(math_abs));
-    xc_object_set_property(obj, "max", xc.func(math_max));
-    xc_object_set_property(obj, "min", xc.func(math_min));
-    xc_object_set_property(obj, "round", xc.func(math_round));
-    xc_object_set_property(obj, "floor", xc.func(math_floor));
-    xc_object_set_property(obj, "ceil", xc.func(math_ceil));
-    xc_object_set_property(obj, "random", xc.func(math_random));
-    xc_object_set_property(obj, "pow", xc.func(math_pow));
-    xc_object_set_property(obj, "sqrt", xc.func(math_sqrt));
+    xc_val abs_func = xc.create(XC_TYPE_FUNC, math_abs, NULL);
+    xc_object_set(&xc, obj, "abs", abs_func);
+    xc.release(abs_func);
+    
+    xc_val max_func = xc.create(XC_TYPE_FUNC, math_max, NULL);
+    xc_object_set(&xc, obj, "max", max_func);
+    xc.release(max_func);
+    
+    xc_val min_func = xc.create(XC_TYPE_FUNC, math_min, NULL);
+    xc_object_set(&xc, obj, "min", min_func);
+    xc.release(min_func);
+    
+    xc_val round_func = xc.create(XC_TYPE_FUNC, math_round, NULL);
+    xc_object_set(&xc, obj, "round", round_func);
+    xc.release(round_func);
+    
+    xc_val floor_func = xc.create(XC_TYPE_FUNC, math_floor, NULL);
+    xc_object_set(&xc, obj, "floor", floor_func);
+    xc.release(floor_func);
+    
+    xc_val ceil_func = xc.create(XC_TYPE_FUNC, math_ceil, NULL);
+    xc_object_set(&xc, obj, "ceil", ceil_func);
+    xc.release(ceil_func);
+    
+    xc_val random_func = xc.create(XC_TYPE_FUNC, math_random, NULL);
+    xc_object_set(&xc, obj, "random", random_func);
+    xc.release(random_func);
+    
+    xc_val pow_func = xc.create(XC_TYPE_FUNC, math_pow, NULL);
+    xc_object_set(&xc, obj, "pow", pow_func);
+    xc.release(pow_func);
+    
+    xc_val sqrt_func = xc.create(XC_TYPE_FUNC, math_sqrt, NULL);
+    xc_object_set(&xc, obj, "sqrt", sqrt_func);
+    xc.release(sqrt_func);
     
     return obj;
 }
@@ -171,9 +205,10 @@ void xc_std_math_initialize(void) {
     /* 创建全局Math对象 */
     math_obj = create_math_object();
     
-    /* 将Math对象添加到全局对象 */
-    xc_val global = xc.get_global_object();
-    xc_object_set_property(global, "Math", math_obj);
+    /* 注意：在当前版本中，我们不将Math对象添加到全局对象
+     * 因为全局对象访问机制尚未实现
+     * 用户需要通过xc_std_get_math()函数获取Math对象
+     */
 }
 
 /* 清理Math库 */
