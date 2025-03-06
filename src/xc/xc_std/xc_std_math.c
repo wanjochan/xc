@@ -6,6 +6,7 @@
 #include "../xc_types/xc_types.h"
 #include "../xc_error.h"
 #include "../xc_object.h"
+#include "../xc_gc.h"
 
 /* Math库对象 */
 static xc_val math_obj = NULL;
@@ -141,48 +142,48 @@ static xc_val create_math_object(void) {
     /* 添加常量 */
     xc_val pi_val = xc.create(XC_TYPE_NUMBER, M_PI);
     xc_object_set(&xc, obj, "PI", pi_val);
-    xc.release(pi_val);
+    xc_release(pi_val);
     
     xc_val e_val = xc.create(XC_TYPE_NUMBER, M_E);
     xc_object_set(&xc, obj, "E", e_val);
-    xc.release(e_val);
+    xc_release(e_val);
     
     /* 添加函数 */
     xc_val abs_func = xc.create(XC_TYPE_FUNC, math_abs, NULL);
     xc_object_set(&xc, obj, "abs", abs_func);
-    xc.release(abs_func);
+    xc_release(abs_func);
     
     xc_val max_func = xc.create(XC_TYPE_FUNC, math_max, NULL);
     xc_object_set(&xc, obj, "max", max_func);
-    xc.release(max_func);
+    xc_release(max_func);
     
     xc_val min_func = xc.create(XC_TYPE_FUNC, math_min, NULL);
     xc_object_set(&xc, obj, "min", min_func);
-    xc.release(min_func);
+    xc_release(min_func);
     
     xc_val round_func = xc.create(XC_TYPE_FUNC, math_round, NULL);
     xc_object_set(&xc, obj, "round", round_func);
-    xc.release(round_func);
+    xc_release(round_func);
     
     xc_val floor_func = xc.create(XC_TYPE_FUNC, math_floor, NULL);
     xc_object_set(&xc, obj, "floor", floor_func);
-    xc.release(floor_func);
+    xc_release(floor_func);
     
     xc_val ceil_func = xc.create(XC_TYPE_FUNC, math_ceil, NULL);
     xc_object_set(&xc, obj, "ceil", ceil_func);
-    xc.release(ceil_func);
+    xc_release(ceil_func);
     
     xc_val random_func = xc.create(XC_TYPE_FUNC, math_random, NULL);
     xc_object_set(&xc, obj, "random", random_func);
-    xc.release(random_func);
+    xc_release(random_func);
     
     xc_val pow_func = xc.create(XC_TYPE_FUNC, math_pow, NULL);
     xc_object_set(&xc, obj, "pow", pow_func);
-    xc.release(pow_func);
+    xc_release(pow_func);
     
     xc_val sqrt_func = xc.create(XC_TYPE_FUNC, math_sqrt, NULL);
     xc_object_set(&xc, obj, "sqrt", sqrt_func);
-    xc.release(sqrt_func);
+    xc_release(sqrt_func);
     
     return obj;
 }
@@ -209,7 +210,7 @@ void xc_std_math_initialize(void) {
 /* 清理Math库 */
 void xc_std_math_cleanup(void) {
     if (math_obj != NULL) {
-        xc.release(math_obj);
+        xc_release(math_obj);
         math_obj = NULL;
     }
 }

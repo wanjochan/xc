@@ -5,3 +5,5 @@ test/*.exe
 .env
 release/
 tmp
+test_internal.exe
+test_external.exe

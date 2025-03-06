@@ -447,6 +447,16 @@ int xc_array_find_index_from(xc_runtime_t *rt, xc_object_t *arr, xc_object_t *va
     return -1;
 }
 
+/* Public index_of function that uses the internal find_index function */
+int xc_array_index_of(xc_runtime_t *rt, xc_object_t *arr, xc_object_t *value) {
+    return xc_array_find_index(rt, arr, value);
+}
+
+/* Public index_of_from function that uses the internal find_index_from function */
+int xc_array_index_of_from(xc_runtime_t *rt, xc_object_t *arr, xc_object_t *value, int from_index) {
+    return xc_array_find_index_from(rt, arr, value, from_index);
+}
+
 /* Convert an object to a string representation */
 static xc_object_t *xc_to_string_internal(xc_runtime_t *rt, xc_object_t *obj) {
     if (obj == NULL) {
@@ -541,6 +551,11 @@ xc_object_t *xc_array_join_elements(xc_runtime_t *rt, xc_object_t *arr, xc_objec
     free(result);
     
     return result_obj;
+}
+
+/* Public join function that uses the internal join_elements function */
+xc_object_t *xc_array_join(xc_runtime_t *rt, xc_object_t *arr, xc_object_t *separator) {
+    return xc_array_join_elements(rt, arr, separator);
 }
 
 /* Type checking */

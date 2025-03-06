@@ -1133,6 +1133,8 @@ xc_object_t *xc_error_get_stack_trace(xc_runtime_t *rt, xc_object_t *error) {
 }
 
 xc_runtime_t xc = {
+    .init = xc_init,
+    .shutdown = xc_shutdown,
     .alloc_object = alloc_object,
     .type_of = type_of,
     .is = is,

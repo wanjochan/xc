@@ -1,15 +1,18 @@
 /*
- * test_utils.h - XC Test Framework Core Utilities
+ * test_utils.h - XC External Test Framework Core Utilities
  * 
- * This header provides the core testing utilities for the XC runtime,
+ * This header provides the core testing utilities for the XC runtime external tests (black-box tests),
  * including assertions, test case management, and result reporting.
+ * 
+ * NOTE: This is for EXTERNAL testing using only the public API. For internal testing using
+ * the internal API, see test/internal/test_utils.h.
  */
 
-#ifndef XC_TEST_UTILS_H
-#define XC_TEST_UTILS_H
+#ifndef XC_EXTERNAL_TEST_UTILS_H
+#define XC_EXTERNAL_TEST_UTILS_H
 
-// #include "../include/libxc.h" //for black(external) test
-#include "../src/xc/xc.h" //for white(internal) test
+/* Include only the public API header */
+#include "../../include/libxc.h"
 
 /* Test case structure */
 typedef struct xc_test_case {
@@ -67,4 +70,4 @@ void test_run_category(const char* category);
 /* Global test suite */
 extern xc_test_suite g_test_suite;
 
-#endif /* XC_TEST_UTILS_H */
+#endif /* XC_EXTERNAL_TEST_UTILS_H */ 

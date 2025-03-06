@@ -568,3 +568,31 @@ bool xc_gc_is_enabled(xc_runtime_t *rt) {
     xc_gc_context_t *gc = xc_gc_get_context(rt);
     return gc->enabled;
 }
+
+/**
+ * Public API for garbage collection
+ */
+
+/**
+ * Collect garbage
+ */
+void xc_gc_collect(void) {
+    xc_runtime_t *rt = &xc;
+    rt->gc();
+}
+
+/**
+ * Release an object
+ */
+void xc_gc_release_object(xc_val obj) {
+    xc_runtime_t *rt = &xc;
+    xc_gc_release(rt, (xc_object_t *)obj);
+}
+
+/**
+ * Global release function for backward compatibility
+ */
+void xc_release(xc_val obj) {
+    xc_runtime_t *rt = &xc;
+    xc_gc_release(rt, (xc_object_t *)obj);
+}

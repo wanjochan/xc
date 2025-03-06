@@ -105,16 +105,19 @@ typedef struct xc_runtime_t {
     
     /* 垃圾回收 */
     void (*gc)(void);
-    
-    /* 引用计数 */
-    xc_val (*retain)(xc_val obj);
-    void (*release)(xc_val obj);
-    void (*mark)(xc_val obj);
+
+    void (*init)(void);
+    void (*shutdown)(void);
     
 } xc_runtime_t;
 
 /* 全局运行时对象 */
 extern xc_runtime_t xc;
 
+/* 运行时初始化和清理函数 */
+void xc_init(void);
+// void xc_auto_init(void) __attribute__((constructor));
+// void xc_shutdown(void) __attribute__((destructor));
+void xc_shutdown(void);
 
 #endif /* LIBXC_H */

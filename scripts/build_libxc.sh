@@ -32,14 +32,14 @@ echo "编译XC源文件..."
 
 # 编译源文件列表（按依赖顺序排序）
 SOURCE_FILES=(
-    # infrax层
-    "${SRC_DIR}/infrax/InfraxCore.c"
-    "${SRC_DIR}/infrax/InfraxMemory.c"
-    "${SRC_DIR}/infrax/InfraxLog.c"
-    "${SRC_DIR}/infrax/InfraxThread.c"
-    "${SRC_DIR}/infrax/InfraxSync.c"
-    "${SRC_DIR}/infrax/InfraxAsync.c"
-    "${SRC_DIR}/infrax/InfraxNet.c"
+    # infrax层 (TO expose "arch" or "infrax" later)
+    # "${SRC_DIR}/infrax/InfraxCore.c"
+    # "${SRC_DIR}/infrax/InfraxMemory.c"
+    # "${SRC_DIR}/infrax/InfraxLog.c"
+    # "${SRC_DIR}/infrax/InfraxThread.c"
+    # "${SRC_DIR}/infrax/InfraxSync.c"
+    # "${SRC_DIR}/infrax/InfraxAsync.c"
+    # "${SRC_DIR}/infrax/InfraxNet.c"
     
     # 核心运行时
     "${SRC_DIR}/xc/xc.c"

@@ -71,4 +71,11 @@ void xc_gc_remove_root(xc_runtime_t *rt, xc_object_t **root_ptr);
 xc_gc_stats_t xc_gc_get_stats(xc_runtime_t *rt);
 void xc_gc_print_stats(xc_runtime_t *rt);
 
+void xc_gc_release_object(xc_val obj);
+
+/**
+ * Global release function for backward compatibility
+ */
+void xc_release(xc_val obj);
+
 #endif /* XC_GC_H */

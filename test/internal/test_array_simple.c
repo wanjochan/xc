@@ -4,7 +4,7 @@
  * This file contains basic tests for the XC array type implementation.
  */
 #include "test_utils.h"
-#include "../src/xc/xc_gc.h"
+#include "../../src/xc/xc_gc.h"
 
 // Global runtime instance
 static xc_runtime_t *rt;
