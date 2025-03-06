@@ -406,7 +406,8 @@ static void test_nested_arrays() {
 // Initialize the runtime and run all array tests
 void run_array_tests() {
     // Initialize the runtime
-    rt = xc_init();
+    // rt = xc_init();
+    rc = &xc;
     if (!rt) {
         fprintf(stderr, "Failed to initialize XC runtime\n");
         exit(1);
@@ -425,7 +426,7 @@ void run_array_tests() {
     test_nested_arrays();
     
     // Cleanup
-    xc_shutdown();
+    // xc_shutdown();
     printf("All array tests passed!\n");
 }
 

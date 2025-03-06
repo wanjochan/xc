@@ -114,10 +114,7 @@ typedef struct xc_runtime_t {
 /* 全局运行时对象 */
 extern xc_runtime_t xc;
 
-/* 运行时初始化和清理函数 */
-void xc_init(void);
-// void xc_auto_init(void) __attribute__((constructor));
-// void xc_shutdown(void) __attribute__((destructor));
-void xc_shutdown(void);
+#define XC_REQUIRES(x) typeof(x) *const requires_##x = &(x)
+
 
 #endif /* LIBXC_H */

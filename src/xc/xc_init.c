@@ -32,12 +32,15 @@ void __attribute__((constructor)) xc_auto_init(void) {
 }
 
 /* 初始化XC运行时 */
-void xc_init(void) {
-    xc_types_init();
+void xc_init_manually(void) {
+    xc_auto_init();
 }
 
-void __attribute__((destructor)) xc_shutdown(void) {
-    printf("TMP xc_shutdown()");
+void __attribute__((destructor)) xc_auto_shutdown(void) {
+    printf("TMP xc_auto_shutdown()");
     /* 执行清理操作 */
     xc.gc();
 }
+// 添加强制引用以确保构造函数被保留
+XC_REQUIRES(xc_auto_init);
+XC_REQUIRES(xc_auto_shutdown);

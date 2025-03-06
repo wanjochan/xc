@@ -1132,9 +1132,11 @@ xc_object_t *xc_error_get_stack_trace(xc_runtime_t *rt, xc_object_t *error) {
     return (xc_object_t *)stack_array;
 }
 
+void xc_auto_init(void);
+void xc_auto_shutdown(void);
 xc_runtime_t xc = {
-    .init = xc_init,
-    .shutdown = xc_shutdown,
+    .init = xc_auto_init,
+    .shutdown = xc_auto_shutdown,
     .alloc_object = alloc_object,
     .type_of = type_of,
     .is = is,

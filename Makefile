@@ -25,6 +25,7 @@ AR := ~/cosmocc/bin/cosmoar
 CFLAGS := -Os -fomit-frame-pointer -fno-pie -fno-pic -fno-common -fno-plt -mcmodel=large -finline-functions
 INCLUDES := -I$(SRC_DIR) -I$(SRC_DIR)/infrax -I$(INCLUDE_DIR) -I~/cosmocc/include
 LDFLAGS := -static -Wl,--gc-sections -Wl,--build-id=none
+#LDFLAGS := -static -Wl,--whole-archive -lxc -Wl,--no-whole-archive
 
 # 默认目标
 .PHONY: all
