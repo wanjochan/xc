@@ -22,6 +22,58 @@ typedef struct {
 /* Forward declarations */
 static bool array_ensure_capacity(xc_array_t *arr, size_t needed);
 static xc_object_t *xc_to_string_internal(xc_runtime_t *rt, xc_object_t *obj);
+static xc_object_t *xc_array_join_elements(xc_runtime_t *rt, xc_object_t *arr, xc_object_t *separator);
+int xc_array_find_index_from(xc_runtime_t *rt, xc_object_t *arr, xc_object_t *value, int from_index);
+
+/* Helper functions for type checking - these should match the xc_is_* functions in other files */
+static bool xc_is_array_object(xc_runtime_t *rt, xc_object_t *obj) {
+    return xc_is_array(rt, obj);
+}
+
+static bool xc_is_string_object(xc_runtime_t *rt, xc_object_t *obj) {
+    return xc_is_string(rt, obj);
+}
+
+static bool xc_is_number_object(xc_runtime_t *rt, xc_object_t *obj) {
+    return xc_is_number(rt, obj);
+}
+
+static bool xc_is_boolean_object(xc_runtime_t *rt, xc_object_t *obj) {
+    return xc_is_boolean(rt, obj);
+}
+
+static bool xc_is_null_object(xc_runtime_t *rt, xc_object_t *obj) {
+    return xc_is_null(rt, obj);
+}
+
+/* Helper functions for value access - these should match the xc_*_value functions in other files */
+static const char *xc_string_get_value(xc_runtime_t *rt, xc_object_t *obj) {
+    return xc_string_value(rt, obj);
+}
+
+static double xc_number_get_value(xc_runtime_t *rt, xc_object_t *obj) {
+    return xc_number_value(rt, obj);
+}
+
+static bool xc_boolean_get_value(xc_runtime_t *rt, xc_object_t *obj) {
+    return xc_boolean_value(rt, obj);
+}
+
+/* Helper function for string creation */
+static xc_object_t *xc_string_object_create(xc_runtime_t *rt, const char *str) {
+    return xc_string_create(rt, str);
+}
+
+/* Helper function for object comparison */
+static int xc_compare_objects(xc_runtime_t *rt, xc_object_t *a, xc_object_t *b) {
+    return xc_compare(rt, a, b);
+}
+
+/* Helper function for reference counting */
+static xc_object_t *xc_gc_retain(xc_runtime_t *rt, xc_object_t *obj) {
+    xc_gc_add_ref(rt, obj);
+    return obj;
+}
 
 /* Array methods */
 static void array_mark(xc_runtime_t *rt, xc_object_t *obj) {

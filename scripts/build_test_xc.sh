@@ -42,6 +42,7 @@ TEST_SOURCE_FILES=(
     "${TEST_DIR}/test_xc_composite_types.c"
     "${TEST_DIR}/test_xc_object.c"
     "${TEST_DIR}/test_xc_stdc.c"
+    # "${TEST_DIR}/test_xc_array.c"  # 暂时注释掉，需要重写以使用公共API
 )
 
 # 编译所有测试源文件

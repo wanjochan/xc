@@ -9,7 +9,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include "test_utils.h"
-#include "../include/xc_compat.h"
+#include "../include/libxc.h"
 
 // Global runtime instance
 static xc_runtime_t *rt;

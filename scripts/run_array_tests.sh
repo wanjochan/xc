@@ -33,12 +33,6 @@ compile_array_test() {
         exit 1
     fi
     
-    # 检查兼容性头文件是否存在
-    if [ ! -f "$INCLUDE_DIR/xc_compat.h" ]; then
-        echo -e "${RED}错误: 兼容性头文件不存在: $INCLUDE_DIR/xc_compat.h${NC}"
-        exit 1
-    fi
-    
     # 编译命令
     gcc -DTEST_ARRAY_STANDALONE \
         -o "$BIN_DIR/test_array.exe" \
