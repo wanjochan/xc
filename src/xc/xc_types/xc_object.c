@@ -247,16 +247,24 @@ void xc_object_delete(xc_runtime_t *rt, xc_object_t *obj, const char *key) {
     for (size_t i = 0; i < object->count; i++) {
         const char *prop_key = xc_string_value(rt, object->properties[i].key);
         if (strcmp(prop_key, key) == 0) {
-            /* Free property */
-            xc_gc_free(rt, object->properties[i].key);
+            /* Release property references */
+            if (object->properties[i].key) {
+                xc_gc_release(rt, object->properties[i].key);
+            }
             if (object->properties[i].value) {
-                xc_gc_free(rt, object->properties[i].value);
+                xc_gc_release(rt, object->properties[i].value);
             }
             
             /* Move remaining properties */
             memmove(&object->properties[i], &object->properties[i + 1],
                    (object->count - i - 1) * sizeof(xc_property_t));
             object->count--;
+
+            /* Clear the last slot */
+            if (object->count < object->capacity) {
+                object->properties[object->count].key = NULL;
+                object->properties[object->count].value = NULL;
+            }
             return;
         }
     }

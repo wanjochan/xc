@@ -228,6 +228,11 @@ xc_object_t *xc_array_pop(xc_runtime_t *rt, xc_object_t *arr) {
     array->items[array->length - 1] = NULL;
     array->length--;
 
+    /* Decrease reference count when removing from array */
+    if (value) {
+        xc_gc_release(rt, value);
+    }
+
     return value;
 }
 

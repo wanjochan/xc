@@ -1,12 +1,21 @@
 /*
  * xc_gc.c - XC garbage collector implementation
  */
-
 #include "xc_gc.h"
 #include "xc_object.h"
+#include "xc_types/xc_types.h"
+#include "xc_types/xc_array.h"
+#include "xc_types/xc_object_data.h"
+#include "xc_types/xc_function.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <time.h>
+
+/* Forward declarations of internal type structures */
+typedef struct xc_array_t xc_array_t;
+typedef struct xc_object_data_t xc_object_data_t;
+typedef struct xc_function_t xc_function_t;
 #include <time.h>
 
 /* Internal GC context structure */
@@ -133,45 +142,80 @@ static void xc_gc_process_gray_list(xc_runtime_t *rt) {
         /* Get extended runtime */
         xc_runtime_extended_t *ext_rt = (xc_runtime_extended_t *)rt;
 
-        /* Mark children based on type */
-        if (obj->type == ext_rt->array_type) {
-            /* Mark array elements */
-            // Code to mark array elements would go here
-        } else if (obj->type == ext_rt->object_type) {
-            /* Mark object properties */
-            // Code to mark object properties would go here
-        } else if (obj->type == ext_rt->function_type) {
-            /* Mark function's closure variables */
-            // Code to mark function closure would go here
-        }
-        
         /* Call type-specific mark function if provided */
         if (obj->type && obj->type->mark) {
             obj->type->mark(rt, obj);
+        } else {
+            /* Default marking behavior for objects without type-specific mark function */
+            if (obj->type == ext_rt->array_type) {
+                /* Mark array elements */
+                xc_array_t *arr = (xc_array_t *)obj;
+                for (size_t i = 0; i < arr->length; i++) {
+                    if (arr->items[i]) {
+                        xc_gc_mark(rt, arr->items[i]);
+                    }
+                }
+            } else if (obj->type == ext_rt->object_type) {
+                /* Mark object properties */
+                xc_object_data_t *object = (xc_object_data_t *)obj;
+                for (size_t i = 0; i < object->count; i++) {
+                    if (object->properties[i].key) {
+                        xc_gc_mark(rt, object->properties[i].key);
+                    }
+                    if (object->properties[i].value) {
+                        xc_gc_mark(rt, object->properties[i].value);
+                    }
+                }
+                /* Mark prototype */
+                if (object->prototype) {
+                    xc_gc_mark(rt, object->prototype);
+                }
+            } else if (obj->type == ext_rt->function_type) {
+                /* Mark function's closure variables */
+                xc_function_t *func = (xc_function_t *)obj;
+                if (func->closure) {
+                    xc_gc_mark(rt, func->closure);
+                }
+                if (func->this_obj) {
+                    xc_gc_mark(rt, func->this_obj);
+                }
+            }
         }
     }
 }
 
-/* Sweep phase of GC - free all objects that weren't marked */
+/* Sweep phase of GC - detect and free unreachable objects */
 static size_t xc_gc_sweep(xc_runtime_t *rt) {
     xc_gc_context_t *gc = xc_gc_get_context(rt);
     size_t freed_count = 0;
     
-    /* Process all objects in the white list */
-    xc_object_t *prev = NULL;
+    /* First pass: find objects with only internal references */
     xc_object_t *curr = gc->white_list;
+    while (curr) {
+        if (curr->gc_color == XC_GC_WHITE && curr->ref_count > 0) {
+            /* Object has external references, skip it */
+            curr->gc_color = XC_GC_BLACK;
+        }
+        curr = curr->gc_next;
+    }
+    
+    /* Second pass: process white objects (unreachable or only internal refs) */
+    xc_object_t *prev = NULL;
+    curr = gc->white_list;
     
     while (curr) {
         xc_object_t *next = curr->gc_next;
         
-        /* Skip objects that were marked during GC */
+        /* Skip objects that were marked or have external references */
         if (curr->gc_color != XC_GC_WHITE) {
             prev = curr;
             curr = next;
             continue;
         }
         
-        /* Free the object */
+        /* Object is either unreachable or part of a cycle */
+        
+        /* Call type-specific cleanup if available */
         if (curr->type && curr->type->free) {
             curr->type->free(rt, curr);
         }
@@ -187,6 +231,9 @@ static size_t xc_gc_sweep(xc_runtime_t *rt) {
         gc->used_memory -= curr->size;
         gc->total_freed++;
         freed_count++;
+        
+        /* Clear any remaining references */
+        curr->ref_count = 0;
         
         /* Free the memory */
         free(curr);
@@ -274,17 +321,61 @@ xc_object_t *xc_gc_alloc(xc_runtime_t *rt, size_t size, int type_id) {
     if (gc->enabled) {
         bool should_gc = false;
         
+        /* Calculate memory pressure */
+        double memory_pressure = (double)(gc->used_memory + size) / gc->heap_size;
+        
+        /* Adjust collection threshold based on GC effectiveness */
+        size_t threshold = gc->config.max_alloc_before_gc;
+        if (gc->gc_cycles > 0) {
+            double last_gc_effectiveness = (double)gc->total_freed / gc->total_allocated;
+            if (last_gc_effectiveness < 0.1) {
+                /* Less than 10% freed, increase threshold to avoid frequent GCs */
+                threshold = (size_t)(threshold * 1.5);
+            } else if (last_gc_effectiveness > 0.5) {
+                /* More than 50% freed, decrease threshold for more frequent GCs */
+                threshold = (size_t)(threshold * 0.8);
+            }
+        }
+
         /* Check allocation threshold */
-        if (gc->allocation_count >= gc->config.max_alloc_before_gc) {
+        if (gc->allocation_count >= threshold) {
+            should_gc = true;
+        }
+
+        /* Handle different memory pressure scenarios */
+        if (memory_pressure > gc->config.gc_threshold) {
+            /* Medium pressure: normal GC */
             should_gc = true;
         }
         
-        /* Check memory usage threshold */
-        if ((double)(gc->used_memory + size) / gc->heap_size > gc->config.gc_threshold) {
-            should_gc = true;
+        if (memory_pressure > 0.9) {
+            /* High pressure: immediate GC and possible heap expansion */
+            xc_gc_run(rt);
+            
+            /* Check if we still need more space after GC */
+            double post_gc_pressure = (double)(gc->used_memory + size) / gc->heap_size;
+            if (post_gc_pressure > 0.9) {
+                /* Try to expand heap */
+                size_t new_heap_size = (size_t)(gc->heap_size * gc->config.growth_factor);
+                if (new_heap_size <= gc->config.max_heap_size) {
+                    gc->heap_size = new_heap_size;
+                }
+            }
+            should_gc = false; /* Already performed GC */
+        } else if (memory_pressure > 0.95) {
+            /* Critical pressure: aggressive GC */
+            xc_gc_run(rt);
+            if ((double)(gc->used_memory + size) / gc->heap_size > 0.95) {
+                /* If still critical after GC, try one last heap expansion */
+                size_t new_heap_size = gc->config.max_heap_size;
+                if (gc->heap_size < new_heap_size) {
+                    gc->heap_size = new_heap_size;
+                }
+            }
+            should_gc = false; /* Already performed GC */
         }
         
-        /* Run GC if needed */
+        /* Run GC if needed and not already performed */
         if (should_gc) {
             xc_gc_run(rt);
         }
