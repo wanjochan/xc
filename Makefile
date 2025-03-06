@@ -52,14 +52,29 @@ clean:
 	@rm -f $(TEST_DIR)/*.exe
 	@echo "清理完成"
 
+# 创建GitHub发布
+.PHONY: github_release
+github_release: libxc
+	@echo "创建GitHub发布..."
+	@if [ -z "$(VERSION)" ]; then \
+		echo "错误: 缺少版本号参数"; \
+		echo "使用方法: make github_release VERSION=版本号 [NOTES=\"发布说明\"]"; \
+		echo "例如: make github_release VERSION=v1.0.0 NOTES=\"首次正式发布\""; \
+		exit 1; \
+	fi
+	@bash $(SCRIPTS_DIR)/github_release.sh "$(VERSION)" "$(NOTES)"
+
 # 帮助信息
 .PHONY: help
 help:
 	@echo "XC项目构建系统"
 	@echo "可用目标:"
-	@echo "  all      - 构建libxc.a和测试程序（默认）"
-	@echo "  libxc    - 只构建libxc.a静态库"
-	@echo "  test     - 构建并运行测试程序"
-	@echo "  clean    - 清理所有构建产物"
-	@echo "  help     - 显示此帮助信息"
+	@echo "  all            - 构建libxc.a和测试程序（默认）"
+	@echo "  libxc          - 只构建libxc.a静态库"
+	@echo "  test           - 构建并运行测试程序"
+	@echo "  clean          - 清理所有构建产物"
+	@echo "  github_release - 创建GitHub发布包并发布"
+	@echo "                   使用方法: make github_release VERSION=版本号 [NOTES=\"发布说明\"]"
+	@echo "                   例如: make github_release VERSION=v1.0.0 NOTES=\"首次正式发布\""
+	@echo "  help           - 显示此帮助信息"
 

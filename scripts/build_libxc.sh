@@ -77,36 +77,18 @@ done
 echo "创建 libxc.a..."
 "${AR}" rcs "${LIB_DIR}/libxc.a" "${OBJECT_FILES[@]}"
 
-# 复制头文件到include目录
-echo "复制头文件到include目录..."
-cp "${SRC_DIR}/xc/xc.h" "${INCLUDE_DIR}/"
-cp "${SRC_DIR}/xc/xc_gc.h" "${INCLUDE_DIR}/"
-cp "${SRC_DIR}/xc/xc_exception.h" "${INCLUDE_DIR}/"
-cp "${SRC_DIR}/xc/xc_types/xc_types.h" "${INCLUDE_DIR}/"
-cp "${SRC_DIR}/xc/xc_std/xc_std_console.h" "${INCLUDE_DIR}/"
-cp "${SRC_DIR}/xc/xc_std/xc_std_math.h" "${INCLUDE_DIR}/"
-
-# 创建一个合并的libxc.h头文件
-echo "创建合并的libxc.h头文件..."
-cat > "${INCLUDE_DIR}/libxc.h" << EOF
-/*
- * libxc.h - XC运行时库的主头文件
- */
-#ifndef LIBXC_H
-#define LIBXC_H
-
-#include "xc.h"
-#include "xc_types.h"
-#include "xc_gc.h"
-#include "xc_exception.h"
-#include "xc_std_console.h"
-#include "xc_std_math.h"
-
-#endif /* LIBXC_H */
-EOF
+# 生成完整的头文件
+echo "生成完整的预处理头文件 libxc.h..."
+"${COSMOCC}" -E -P \
+    -I"${INCLUDE_DIR}" \
+    -I"${SRC_DIR}" \
+    -I"${SRC_DIR}/infrax" \
+    -I~/cosmocc/include \
+    "${INCLUDE_DIR}/libxc_internal.h" > "${INCLUDE_DIR}/libxc.h"
 
 # 显示文件信息
 echo -e "\n生成的静态库信息:"
 ls -la "${LIB_DIR}/libxc.a"
+ls -la "${INCLUDE_DIR}/libxc.h"
 
-echo "libxc.a构建完成!"
+echo "libxc.a和libxc.h构建完成!"
