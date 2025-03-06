@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# github_release.sh - 自动在GitHub上发布libxc.a和libxc_complete.h
+# github_release.sh - 自动在GitHub上发布libxc.a和libxc.h
 # 使用方法: ./github_release.sh [版本号] [发布说明]
 # 例如: ./github_release.sh v1.0.0 "首次正式发布"
 
@@ -42,8 +42,8 @@ if [ ! -f "${LIB_DIR}/libxc.a" ]; then
     exit 1
 fi
 
-if [ ! -f "${INCLUDE_DIR}/libxc_complete.h" ]; then
-    echo "错误: ${INCLUDE_DIR}/libxc_complete.h 不存在"
+if [ ! -f "${INCLUDE_DIR}/libxc.h" ]; then
+    echo "错误: ${INCLUDE_DIR}/libxc.h 不存在"
     exit 1
 fi
 
@@ -55,14 +55,7 @@ mkdir -p "${RELEASE_DIR}/${RELEASE_PACKAGE}/include"
 # 复制文件到发布目录
 echo "准备发布文件..."
 cp "${LIB_DIR}/libxc.a" "${RELEASE_DIR}/${RELEASE_PACKAGE}/lib/"
-cp "${INCLUDE_DIR}/libxc_complete.h" "${RELEASE_DIR}/${RELEASE_PACKAGE}/include/"
 cp "${INCLUDE_DIR}/libxc.h" "${RELEASE_DIR}/${RELEASE_PACKAGE}/include/"
-cp "${INCLUDE_DIR}/xc.h" "${RELEASE_DIR}/${RELEASE_PACKAGE}/include/"
-cp "${INCLUDE_DIR}/xc_types.h" "${RELEASE_DIR}/${RELEASE_PACKAGE}/include/"
-cp "${INCLUDE_DIR}/xc_gc.h" "${RELEASE_DIR}/${RELEASE_PACKAGE}/include/"
-cp "${INCLUDE_DIR}/xc_exception.h" "${RELEASE_DIR}/${RELEASE_PACKAGE}/include/"
-cp "${INCLUDE_DIR}/xc_std_console.h" "${RELEASE_DIR}/${RELEASE_PACKAGE}/include/"
-cp "${INCLUDE_DIR}/xc_std_math.h" "${RELEASE_DIR}/${RELEASE_PACKAGE}/include/"
 
 # 创建README文件
 cat > "${RELEASE_DIR}/${RELEASE_PACKAGE}/README.md" << EOF
@@ -73,9 +66,7 @@ XC是一个轻量级运行时/语言实现，具有类似JavaScript的类型系�
 ## 文件说明
 
 - \`lib/libxc.a\`: XC运行时库静态链接库
-- \`include/libxc_complete.h\`: 完整的预处理头文件（推荐使用）
-- \`include/libxc.h\`: 主头文件（包含其他所有头文件）
-- \`include/*.h\`: 各模块独立头文件
+- \`include/libxc.h\`: 完整的预处理头文件（推荐使用）
 
 ## 使用方法
 
@@ -84,7 +75,7 @@ XC是一个轻量级运行时/语言实现，具有类似JavaScript的类型系�
 只需包含完整的预处理头文件：
 
 \`\`\`c
-#include "libxc_complete.h"
+#include "libxc.h"
 \`\`\`
 
 ### 模块化集成
