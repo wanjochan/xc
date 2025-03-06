@@ -5,7 +5,7 @@
 #ifndef XC_STD_CONSOLE_H
 #define XC_STD_CONSOLE_H
 
-#include "xc.h"
+#include "../xc.h"
 
 /* 获取Console对象 */
 xc_val xc_std_get_console(void);

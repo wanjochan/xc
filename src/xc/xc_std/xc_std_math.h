@@ -5,7 +5,7 @@
 #ifndef XC_STD_MATH_H
 #define XC_STD_MATH_H
 
-#include "xc.h"
+#include "../xc.h"
 
 /* 获取Math对象 */
 xc_val xc_std_get_math(void);

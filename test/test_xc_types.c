@@ -3,7 +3,6 @@
  */
 
 #include "test_utils.h"
-#include "xc.h"
 
 /* Boolean type tests */
 static void test_boolean_creation(void) {

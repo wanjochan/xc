@@ -3,9 +3,6 @@
  */
 
 #include "test_utils.h"
-#include "xc.h"
-#include <stdio.h>
-#include <string.h>
 
 /* Test helper functions */
 static xc_val forEach_test_func(xc_val self, int argc, xc_val* argv, xc_val closure) {

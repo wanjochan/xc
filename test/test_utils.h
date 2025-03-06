@@ -11,7 +11,9 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include "xc.h"
+#include <assert.h>
+#include <stdbool.h>
+#include "../src/xc/xc.h"
 
 /* Test case structure */
 typedef struct xc_test_case {

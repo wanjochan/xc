@@ -2,12 +2,7 @@
  * test_xc_object.c - 对象方法测试
  */
 
-#include "xc.h"
 #include "test_utils.h"
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
-#include <assert.h>
 
 /* 声明初始化和清理函数 */
 void xc_initialize(void);

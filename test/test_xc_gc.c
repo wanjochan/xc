@@ -3,11 +3,6 @@
  */
 
 #include "test_utils.h"
-#include "xc.h"
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
-#include <stdbool.h>  /* 添加对bool类型的支持 */
 
 /* Memory statistics */
 typedef struct {

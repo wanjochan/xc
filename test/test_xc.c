@@ -2,10 +2,6 @@
  * test_xc.c - XC Runtime Tests Main Entry
  */
 
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
-#include "xc.h"
 #include "test_utils.h"
 
 /* External test suite declarations */

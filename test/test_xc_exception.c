@@ -3,10 +3,6 @@
  */
 
 #include "test_utils.h"
-#include "xc.h"
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
 
 /* 测试辅助函数 - 抛出异常 */
 static xc_val throw_test_error(const char* message) {

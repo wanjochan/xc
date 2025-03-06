@@ -2,14 +2,7 @@
  * test_xc_stdc.c - 标准库和复合数据类型测试
  */
 
-#include "xc.h"
-#include "xc_std_math.h"
-#include "xc_std_console.h"
 #include "test_utils.h"
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
-#include <assert.h>
 
 /* 声明初始化和清理函数 */
 void xc_initialize(void);
