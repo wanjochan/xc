@@ -131,7 +131,7 @@ static int array_compare(xc_runtime_t *rt, xc_object_t *a, xc_object_t *b) {
     return 0;
 }
 
-/* Type descriptor for array type */
+/* Array type structure */
 static xc_type_t array_type = {
     .name = "array",
     .flags = XC_TYPE_COMPOSITE,
@@ -141,21 +141,87 @@ static xc_type_t array_type = {
     .compare = array_compare
 };
 
+/* Array creator function for type system */
+static xc_val array_creator(int type, va_list args) {
+    // 使用全局运行时实例
+    xc_runtime_t *rt = &xc;
+    printf("DEBUG array_creator called, type=%d\n", type);
+    // 创建一个空数组
+    return xc_array_create(rt);
+}
+
+/* 方法包装函数 */
+static xc_val array_length_method(xc_val self, xc_val arg) {
+    xc_runtime_t *rt = &xc;
+    printf("DEBUG array_length_method called, self=%p\n", self);
+    return (xc_val)xc_array_length(rt, (xc_object_t *)self);
+}
+
+static xc_val array_get_method(xc_val self, xc_val arg) {
+    xc_runtime_t *rt = &xc;
+    printf("DEBUG array_get_method called, self=%p, arg=%p\n", self, arg);
+    // 参数应该是一个数字，表示索引
+    if (!arg || !rt->is(arg, XC_TYPE_NUMBER)) {
+        printf("DEBUG array_get_method: arg is not a number\n");
+        return NULL;
+    }
+    // 获取索引值
+    long index = (long)arg;
+    printf("DEBUG array_get_method: index=%ld\n", index);
+    return xc_array_get(rt, (xc_object_t *)self, index);
+}
+
+static xc_val array_push_method(xc_val self, xc_val arg) {
+    xc_runtime_t *rt = &xc;
+    printf("DEBUG array_push_method called, self=%p, arg=%p\n", self, arg);
+    xc_array_push(rt, (xc_object_t *)self, (xc_object_t *)arg);
+    return self; // 返回数组自身
+}
+
+/* Array initializer function for type system */
+static void array_initializer() {
+    xc_runtime_t *rt = &xc;
+    // 数组类型的初始化逻辑
+    printf("DEBUG array_initializer called\n");
+    printf("DEBUG array_initializer: registering methods for type %d\n", XC_TYPE_ARRAY);
+    printf("DEBUG array_initializer: length method at %p\n", array_length_method);
+    printf("DEBUG array_initializer: get method at %p\n", array_get_method);
+    printf("DEBUG array_initializer: push method at %p\n", array_push_method);
+    /* 注册数组方法 */
+    rt->register_method(XC_TYPE_ARRAY, "length", array_length_method);
+    rt->register_method(XC_TYPE_ARRAY, "get", array_get_method);
+    rt->register_method(XC_TYPE_ARRAY, "push", array_push_method);
+    printf("DEBUG array_initializer: methods registered\n");
+}
+
 /* Register array type */
 void xc_register_array_type(xc_runtime_t *rt) {
-    /* 定义类型生命周期管理接口 */
-    static xc_type_lifecycle_t lifecycle = {
-        .initializer = NULL,
+    printf("DEBUG xc_register_array_type: registering array type\n");
+    
+    /* 创建生命周期管理结构 */
+    xc_type_lifecycle_t lifecycle = {
+        .initializer = array_initializer,
         .cleaner = NULL,
-        .creator = NULL,  /* Array has its own creation functions */
-        .destroyer = (xc_destroy_func)array_free,
-        .marker = (xc_marker_func)array_mark,
-        .allocator = NULL
+        .creator = array_creator,
+        .destroyer = NULL,
+        .allocator = NULL,
+        .marker = NULL
     };
+    
+    printf("DEBUG array creator=%p\n", array_creator);
+    printf("DEBUG array initializer=%p\n", array_initializer);
     
     /* 注册类型 */
     int type_id = xc_register_type("array", &lifecycle);
+    
+    /* 使用 XC_RUNTIME_EXT 宏访问扩展运行时结构体 */
     XC_RUNTIME_EXT(rt)->array_type = &array_type;
+    printf("DEBUG xc_register_array_type: set array_type to %p\n", &array_type);
+    
+    // /* 注册数组方法 */
+    // rt->register_method(XC_TYPE_ARRAY, "length", array_length_method);
+    // rt->register_method(XC_TYPE_ARRAY, "get", array_get_method);
+    // rt->register_method(XC_TYPE_ARRAY, "push", array_push_method);
 }
 
 /* Ensure array has enough capacity */
@@ -186,13 +252,16 @@ static bool array_ensure_capacity(xc_array_t *arr, size_t needed) {
 
 /* Array creation */
 xc_object_t *xc_array_create(xc_runtime_t *rt) {
+    printf("DEBUG xc_array_create called\n");
     return xc_array_create_with_capacity(rt, 0);
 }
 
 /* Create array with initial values */
 xc_object_t *xc_array_create_with_values(xc_runtime_t *rt, xc_object_t **values, size_t count) {
+    printf("DEBUG xc_array_create_with_values called, count=%zu\n", count);
     xc_object_t *arr = xc_array_create_with_capacity(rt, count);
     if (!arr) {
+        printf("DEBUG xc_array_create_with_values: failed to create array\n");
         return NULL;
     }
     
@@ -204,14 +273,35 @@ xc_object_t *xc_array_create_with_values(xc_runtime_t *rt, xc_object_t **values,
 }
 
 xc_object_t *xc_array_create_with_capacity(xc_runtime_t *rt, size_t initial_capacity) {
+    printf("DEBUG xc_array_create_with_capacity called, initial_capacity=%zu\n", initial_capacity);
+    printf("DEBUG xc_array_create_with_capacity: rt=%p\n", rt);
+    printf("DEBUG xc_array_create_with_capacity: XC_RUNTIME_EXT(rt)=%p\n", XC_RUNTIME_EXT(rt));
+    printf("DEBUG xc_array_create_with_capacity: array_type=%p\n", XC_RUNTIME_EXT(rt)->array_type);
+    
     /* 使用 xc_gc_alloc 分配对象，并传递类型索引 */
     xc_array_t *arr = (xc_array_t *)xc_gc_alloc(rt, sizeof(xc_array_t), XC_TYPE_ARRAY);
     if (!arr) {
+        printf("DEBUG xc_array_create_with_capacity: failed to allocate memory\n");
         return NULL;
     }
     
-    /* 设置正确的类型指针 */
-    ((xc_object_t *)arr)->type = XC_RUNTIME_EXT(rt)->array_type;
+    /* 手动设置类型指针，确保它被正确设置 */
+    if (XC_RUNTIME_EXT(rt)->array_type) {
+        ((xc_object_t *)arr)->type = XC_RUNTIME_EXT(rt)->array_type;
+        printf("DEBUG xc_array_create_with_capacity: manually set type pointer to %p\n", ((xc_object_t *)arr)->type);
+    } else {
+        printf("DEBUG xc_array_create_with_capacity: array_type is NULL, using static array_type\n");
+        ((xc_object_t *)arr)->type = &array_type;
+        printf("DEBUG xc_array_create_with_capacity: manually set type pointer to %p\n", ((xc_object_t *)arr)->type);
+    }
+    
+    /* 确保对象头的类型ID也被正确设置 */
+    xc_header_t* header = XC_HEADER(arr);
+    if (header) {
+        printf("DEBUG xc_array_create_with_capacity: header at %p, type is %d\n", header, header->type);
+    } else {
+        printf("DEBUG xc_array_create_with_capacity: header is NULL\n");
+    }
 
     arr->items = NULL;
     arr->length = 0;
@@ -219,11 +309,13 @@ xc_object_t *xc_array_create_with_capacity(xc_runtime_t *rt, size_t initial_capa
 
     if (initial_capacity > 0) {
         if (!array_ensure_capacity(arr, initial_capacity)) {
+            printf("DEBUG xc_array_create_with_capacity: failed to ensure capacity\n");
             xc_gc_free(rt, (xc_object_t *)arr);
             return NULL;
         }
     }
 
+    printf("DEBUG xc_array_create_with_capacity: returning array at %p\n", arr);
     return (xc_object_t *)arr;
 }
 
@@ -563,5 +655,15 @@ xc_object_t *xc_array_join(xc_runtime_t *rt, xc_object_t *arr, xc_object_t *sepa
 
 /* Type checking */
 bool xc_is_array(xc_runtime_t *rt, xc_object_t *obj) {
-    return obj && obj->type == XC_RUNTIME_EXT(rt)->array_type;
+    // 检查对象是否为NULL
+    if (!obj) return false;
+    
+    // 检查类型指针是否匹配
+    if (obj->type == XC_RUNTIME_EXT(rt)->array_type) return true;
+    
+    // 检查类型ID是否匹配 (通过xc_header_t获取类型ID)
+    xc_header_t* header = XC_HEADER(obj);
+    if (header && header->type == XC_TYPE_ARRAY) return true;
+    
+    return false;
 }

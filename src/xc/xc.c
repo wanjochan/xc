@@ -1,253 +1,6 @@
 #include "xc.h"
 #include "xc_internal.h"
 
-/* Garbage collector color marks for tri-color marking */
-#define XC_GC_WHITE      0   /* Object is not reachable (candidate for collection) */
-#define XC_GC_GRAY       1   /* Object is reachable but its children haven't been scanned */
-#define XC_GC_BLACK      2   /* Object is reachable and its children have been scanned */
-#define XC_GC_PERMANENT  3   /* Object is permanently reachable (never collected) */
-
-/* GC configuration structure */
-typedef struct xc_gc_config {
-    size_t initial_heap_size;   /* Initial size of the heap in bytes */
-    size_t max_heap_size;       /* Maximum size of the heap in bytes */
-    double growth_factor;       /* Heap growth factor when resizing */
-    double gc_threshold;        /* Memory usage threshold to trigger GC */
-    size_t max_alloc_before_gc; /* Maximum number of allocations before forced GC */
-} xc_gc_config_t;
-
-/* Default GC configuration */
-#define XC_GC_DEFAULT_CONFIG { \
-    .initial_heap_size = 1024 * 1024, \
-    .max_heap_size = 1024 * 1024 * 1024, \
-    .growth_factor = 1.5, \
-    .gc_threshold = 0.7, \
-    .max_alloc_before_gc = 10000 \
-}
-
-/* GC statistics structure */
-typedef struct xc_gc_stats {
-    size_t heap_size;           /* Current heap size in bytes */
-    size_t used_memory;         /* Used memory in bytes */
-    size_t total_allocated;     /* Total allocated objects since start */
-    size_t total_freed;         /* Total freed objects since start */
-    size_t gc_cycles;           /* Number of GC cycles */
-    double avg_pause_time_ms;   /* Average GC pause time in milliseconds */
-    double last_pause_time_ms;  /* Last GC pause time in milliseconds */
-} xc_gc_stats_t;
-
-/* Forward declarations of internal type structures */
-typedef struct xc_array_t xc_array_t;
-typedef struct xc_object_data_t xc_object_data_t;
-typedef struct xc_function_t xc_function_t;
-
-/* Internal GC context structure */
-typedef struct xc_gc_context {
-    xc_gc_config_t config;           /* GC configuration */
-    size_t heap_size;                /* Current heap size in bytes */
-    size_t used_memory;              /* Used memory in bytes */
-    size_t allocation_count;         /* Allocations since last GC */
-    size_t total_allocated;          /* Total allocated objects */
-    size_t total_freed;              /* Total freed objects */
-    size_t gc_cycles;                /* Number of GC cycles */
-    double total_pause_time_ms;      /* Total GC pause time in ms */
-    bool enabled;                    /* Whether GC is enabled */
-    
-    /* Root set */
-    xc_object_t ***roots;            /* Array of pointers to root objects */
-    size_t root_count;               /* Number of roots */
-    size_t root_capacity;            /* Capacity of roots array */
-    
-    /* Object lists for tri-color marking */
-    xc_object_t *white_list;         /* White objects (candidates for collection) */
-    xc_object_t *gray_list;          /* Gray objects (reachable but not scanned) */
-    xc_object_t *black_list;         /* Black objects (reachable and scanned) */
-} xc_gc_context_t;
-
-/* Function declarations for GC */
-void xc_gc_init(xc_runtime_t *rt, const xc_gc_config_t *config);
-void xc_gc_shutdown(xc_runtime_t *rt);
-void xc_gc_run(xc_runtime_t *rt);
-void xc_gc_enable(xc_runtime_t *rt);
-void xc_gc_disable(xc_runtime_t *rt);
-bool xc_gc_is_enabled(xc_runtime_t *rt);
-xc_object_t *xc_gc_alloc(xc_runtime_t *rt, size_t size, int type_id);
-void xc_gc_free(xc_runtime_t *rt, xc_object_t *obj);
-void xc_gc_mark_permanent(xc_runtime_t *rt, xc_object_t *obj);
-void xc_gc_mark(xc_runtime_t *rt, xc_object_t *obj);
-void xc_gc_add_ref(xc_runtime_t *rt, xc_object_t *obj);
-void xc_gc_release(xc_runtime_t *rt, xc_object_t *obj);
-int xc_gc_get_ref_count(xc_runtime_t *rt, xc_object_t *obj);
-void xc_gc_add_root(xc_runtime_t *rt, xc_object_t **root_ptr);
-void xc_gc_remove_root(xc_runtime_t *rt, xc_object_t **root_ptr);
-xc_gc_stats_t xc_gc_get_stats(xc_runtime_t *rt);
-void xc_gc_print_stats(xc_runtime_t *rt);
-void xc_gc_release_object(xc_val obj);
-void xc_release(xc_val obj);
-
-/* 错误代码 */
-#define XC_ERR_NONE 0
-#define XC_ERR_GENERIC 1        /* 通用错误 */
-#define XC_ERR_TYPE 2           /* 类型错误 */
-#define XC_ERR_VALUE 3          /* 值错误 */
-#define XC_ERR_INDEX 4          /* 索引错误 */
-#define XC_ERR_KEY 5            /* 键错误 */
-#define XC_ERR_ATTRIBUTE 6      /* 属性错误 */
-#define XC_ERR_NAME 7           /* 名称错误 */
-#define XC_ERR_SYNTAX 8         /* 语法错误 */
-#define XC_ERR_RUNTIME 9        /* 运行时错误 */
-#define XC_ERR_MEMORY 10        /* 内存错误 */
-#define XC_ERR_IO 11            /* IO错误 */
-#define XC_ERR_NOT_IMPLEMENTED 12  /* 未实现错误 */
-#define XC_ERR_INVALID_ARGUMENT 13  /* 无效参数错误 */
-#define XC_ERR_ASSERTION 14     /* 断言错误 */
-#define XC_ERR_USER 15          /* 用户自定义错误 */
-
-/* 函数处理器类型定义 */
-typedef xc_val (*xc_function_handler)(xc_val this_obj, int argc, xc_val* argv, xc_val closure);
-
-/* 执行栈帧结构 */
-typedef struct xc_stack_frame {
-    const char* func_name;         /* 函数名称 */
-    const char* file_name;         /* 文件名称 */
-    int line_number;               /* 行号 */
-    struct xc_stack_frame* prev;   /* 上一帧 */
-} xc_stack_frame_t;
-
-/* 异常处理器结构 - 内部增强版本 */
-typedef struct xc_exception_handler_internal {
-    jmp_buf env;                      /* 保存的环境 */
-    xc_val catch_func;                /* catch处理器 */
-    xc_val finally_func;              /* finally处理器 */
-    struct xc_exception_handler_internal* prev; /* 链接到前一个处理器 */
-    xc_val current_exception;         /* 当前处理的异常 */
-    bool has_caught;                  /* 是否已经捕获过异常 */
-} xc_exception_handler_internal_t;
-
-/* 统一线程本地状态 */
-static __thread struct {
-    /* 栈相关 */
-    xc_stack_frame_t* top;         /* 栈顶 */
-    int depth;                     /* 栈深度 */
-    /* 异常相关 */
-    xc_exception_handler_internal_t* current;  /* 当前异常处理器 */
-    xc_val current_error;          /* 当前错误 */
-    bool in_try_block;             /* 是否在try块中 */
-    xc_val uncaught_handler;       /* 未捕获异常处理器 */
-} _xc_thread_state = {0};
-
-/* 类型注册表结构 */
-#define TYPE_HASH_SIZE 64
-
-typedef struct xc_type_entry {
-    const char* name;
-    int id;
-    xc_type_lifecycle_t lifecycle;
-    struct xc_type_entry* next;
-} xc_type_entry_t;
-
-typedef struct {
-    xc_type_entry_t* buckets[TYPE_HASH_SIZE];
-    int count;
-    int capacity;
-    xc_type_entry_t* entries;
-} xc_type_registry_t;
-
-static xc_type_registry_t type_registry;
-
-/* 对象头结构 - 每个对象的隐藏前缀 */
-typedef struct {
-    int type;           /* 类型ID */
-    unsigned int flags;  /* 标志位 */
-    int ref_count;       /* 引用计数 */
-    void* next_gc;       /* GC链表下一项 */
-    size_t size;         /* 对象大小（包括头部） */
-    const char* type_name; /* 类型名称（便于调试） */
-    unsigned char color;   /* 对象颜色，用于三色标记法 */
-} xc_header_t;
-
-/* 标志位定义 */
-#define XC_FLAG_ROOT     (1 << 0)  /* GC根对象 */
-#define XC_FLAG_FINALIZE (1 << 1)  /* 需要终结 */
-
-/* 从对象获取头部 */
-#define XC_HEADER(obj) ((xc_header_t*)((char*)(obj) - sizeof(xc_header_t)))
-
-/* 从头部获取对象 */
-#define XC_OBJECT(header) ((xc_val)((char*)(header) + sizeof(xc_header_t)))
-
-/* 线程本地GC状态 */
-static __thread struct {
-    void* gc_first;         /* 本线程GC链表头 */
-    size_t total_memory;    /* 本线程分配的内存总量 */
-    size_t gc_threshold;    /* 本线程GC阈值 */
-    char initialized;       /* 线程本地状态是否已初始化 */
-    void* stack_bottom;     /* 栈底指针 */
-    size_t gray_count;      /* 灰色对象计数 */
-    xc_header_t** gray_stack; /* 灰色对象栈 */
-    size_t gray_capacity;   /* 灰色对象栈容量 */
-    size_t allocation_count; /* 分配计数，用于触发自动GC */
-} _thread_gc = {0};
-
-/* 全局状态结构 */
-typedef struct {
-    //char initialized;
-    /* 类型方法表 */
-    struct {
-        const char* name;
-        xc_val (*func)(xc_val, ...);
-        int next;  /* 链表下一个方法索引 */
-    } methods[256];  /* 方法池 */
-    int method_count;
-    int method_heads[16];  /* 每个类型的方法链表头 */
-    xc_type_registry_t type_registry;
-} xc_state_t;
-
-/* 全局状态 */
-static xc_state_t _state = {0};
-
-/* 前置声明 */
-static void push_stack_frame(const char* func_name, const char* file_name, int line_number);
-static void pop_stack_frame(void);
-static void thread_cleanup(void);
-static void throw_internal(xc_val error, bool allow_rethrow);
-static void throw(xc_val error);
-static void throw_with_rethrow(xc_val error);
-static xc_val create(int type, ...);
-static int type_of(xc_val val);
-static int is(xc_val val, int type);
-static xc_val invoke(xc_val func, int argc, ...);
-static xc_val dot(xc_val obj, const char* key, ...);
-static xc_val call(xc_val obj, const char* method, ...);
-static void gc_mark_object(xc_val obj);
-static void gc_mark_stack(void);
-static void gc_mark_roots(void);
-static void gc_sweep(void);
-static void gc_mark_gray(xc_header_t* header);
-static void gc_scan_gray(void);
-
-// static void gc_mark_object(xc_val obj);
-// static void gc_mark_stack(void);
-// static void gc_mark_roots(void);
-// static void gc_sweep(void);
-// static void gc_mark_gray(xc_header_t* header);
-// static void gc_scan_gray(void);
-static int type_of(xc_val val);
-static int is(xc_val val, int type);
-static xc_val create(int type, ...);
-static xc_val invoke(xc_val func, int argc, ...);
-static xc_val call(xc_val obj, const char* method, ...);
-static void clear_error(void);
-static xc_val get_current_error(void);
-static void set_uncaught_exception_handler(xc_val handler);
-static void push_stack_frame(const char* func_name, const char* file_name, int line_number);
-static void pop_stack_frame(void);
-static void throw_internal(xc_val error, bool allow_rethrow);
-static void throw(xc_val error);
-static xc_val try_catch_finally(xc_val try_func, xc_val catch_func, xc_val finally_func);
-static int get_type_id(const char* name);
-static xc_val function_handler(xc_val this_obj, int argc, xc_val* argv, xc_val closure);
-
 ///////////////////////////////////////////////////
 /* 简单的哈希函数 */
 static unsigned int hash_string(const char* str) {
@@ -574,6 +327,7 @@ static int find_type_id_by_name(const char* name) {
 
 /* 注册类型 */
 int xc_register_type(const char* name, xc_type_lifecycle_t* lifecycle) {
+    // printf("DEBUG xc_register_type(\"%s\"), lifecycle=%d\n", name, lifecycle);
     if (type_registry.count >= 16) {
         return -1;
     }
@@ -623,7 +377,14 @@ int xc_register_type(const char* name, xc_type_lifecycle_t* lifecycle) {
     
     entry->id = type_id;
     memcpy(&entry->lifecycle, lifecycle, sizeof(xc_type_lifecycle_t));
-    
+    printf("DEBUG xc_register_type(\"%s\"), lifecycle=%d, type_id=%d\n", name, lifecycle, type_id);
+    if (lifecycle->creator) {
+        printf("DEBUG %s creator=%d\n",name, lifecycle->creator);
+    }
+    if (lifecycle->initializer) {
+        printf("DEBUG %s initializer=%d\n",name, lifecycle->initializer);
+    }
+
     /* 添加到哈希表 */
     unsigned int hash = hash_string(name);
     entry->next = type_registry.buckets[hash];
@@ -632,7 +393,7 @@ int xc_register_type(const char* name, xc_type_lifecycle_t* lifecycle) {
     type_registry.count++;
     
     if (entry->lifecycle.initializer) {
-        entry->lifecycle.initializer();
+        entry->lifecycle.initializer();//todo change to rt once the 1sr arg ready
     }
     
     return type_id;
@@ -640,31 +401,51 @@ int xc_register_type(const char* name, xc_type_lifecycle_t* lifecycle) {
 
 /* 注册方法 */
 static char register_method(int type, const char* name, xc_method_func func) {
-    if (type < 0 || type >= 16 || !name || !func) return 0;
+    printf("DEBUG register_method: type=%d, name=%s, func=%p\n", type, name, func);
+    if (type < 0 || type >= 16 || !name || !func) {
+        printf("DEBUG register_method: invalid parameters\n");
+        return 0;
+    }
     
-    if (_state.method_count >= 256) return 0;
+    if (_state.method_count >= 256) {
+        printf("DEBUG register_method: method table full\n");
+        return 0;
+    }
     
     int method_idx = _state.method_count++;
     _state.methods[method_idx].name = name;
     _state.methods[method_idx].func = (xc_val (*)(xc_val, ...))func;
     _state.methods[method_idx].next = _state.method_heads[type];
     _state.method_heads[type] = method_idx;
+    printf("DEBUG register_method: registered method at index %d, next=%d, head=%d\n", 
+           method_idx, _state.methods[method_idx].next, _state.method_heads[type]);
     
     return 1;
 }
 
 /* 查找方法 */
 static xc_method_func find_method(int type, const char* name) {
-    if (type < 0 || type >= 16 || !name) return NULL;
+    printf("DEBUG find_method: type=%d, name=%s\n", type, name);
+    if (type < 0 || type >= 16 || !name) {
+        printf("DEBUG find_method: invalid parameters\n");
+        return NULL;
+    }
     
     int method_idx = _state.method_heads[type];
+    printf("DEBUG find_method: method_idx=%d\n", method_idx);
     while (method_idx != 0) {
+        printf("DEBUG find_method: checking method at index %d, name=%s\n", 
+               method_idx, _state.methods[method_idx].name);
         if (strcmp(_state.methods[method_idx].name, name) == 0) {
+            printf("DEBUG find_method: found method at index %d, func=%p\n", 
+                   method_idx, _state.methods[method_idx].func);
             return (xc_method_func)_state.methods[method_idx].func;
         }
         method_idx = _state.methods[method_idx].next;
+        printf("DEBUG find_method: next method_idx=%d\n", method_idx);
     }
     
+    printf("DEBUG find_method: method not found\n");
     return NULL;
 }
 
@@ -1047,17 +828,36 @@ static xc_val invoke(xc_val func, int argc, ...) {
 
 static int is(xc_val val, int type) {
     if (!val) return type == XC_TYPE_NULL;
-    return XC_HEADER(val)->type == type;
+    
+    // 获取对象的类型ID
+    int obj_type = XC_HEADER(val)->type;
+    
+    // 对于数组类型，特殊处理
+    if (type == XC_TYPE_ARRAY) {
+        // 如果对象的类型ID是XC_TYPE_ARRAY，或者对象的类型指针是array_type，则返回true
+        xc_runtime_t *rt = &xc;
+        xc_object_t *obj = (xc_object_t *)val;
+        return obj_type == XC_TYPE_ARRAY || (obj && obj->type == XC_RUNTIME_EXT(rt)->array_type);
+    }
+    
+    // 对于其他类型，直接比较类型ID
+    return obj_type == type;
 }
 
 static xc_val call(xc_val obj, const char* method, ...) {
-    if (!obj || !method) return NULL;
+    printf("DEBUG call: obj=%p, method=%s\n", obj, method);
+    if (!obj || !method) {
+        printf("DEBUG call: invalid parameters\n");
+        return NULL;
+    }
     
     /* 查找方法 */
     int type = type_of(obj);
+    printf("DEBUG call: type=%d\n", type);
     xc_method_func func = find_method(type, method);
     if (!func) {
         /* 方法未找到 */
+        printf("DEBUG call: method not found\n");
         return NULL;
     }
     
@@ -1074,7 +874,9 @@ static xc_val call(xc_val obj, const char* method, ...) {
     va_end(args);
     
     /* 调用方法 */
+    printf("DEBUG call: calling method func=%p, obj=%p, arg=%p\n", func, obj, arg);
     xc_val result = func(obj, arg);
+    printf("DEBUG call: method returned result=%p\n", result);
     
     /* 移除栈帧 */
     pop_stack_frame();
@@ -1684,14 +1486,15 @@ xc_object_t *xc_gc_alloc(xc_runtime_t *rt, size_t size, int type_id) {
         xc_gc_run(rt);
     }
     
-    /* Allocate memory for the object */
-    xc_object_t *obj = (xc_object_t *)malloc(size);
-    if (!obj) {
+    /* 为对象头和对象本身分配内存 */
+    size_t total_size = size + sizeof(xc_header_t);
+    char *mem = (char *)malloc(total_size);
+    if (!mem) {
         /* If allocation fails, run GC and try again */
         if (gc->enabled) {
             xc_gc_run(rt);
-            obj = (xc_object_t *)malloc(size);
-            if (!obj) {
+            mem = (char *)malloc(total_size);
+            if (!mem) {
                 /* If still fails, return NULL */
                 return NULL;
             }
@@ -1700,7 +1503,19 @@ xc_object_t *xc_gc_alloc(xc_runtime_t *rt, size_t size, int type_id) {
         }
     }
     
-    /* Initialize object */
+    /* 初始化对象头 */
+    xc_header_t *header = (xc_header_t *)mem;
+    memset(header, 0, sizeof(xc_header_t));
+    header->type = type_id;
+    header->size = total_size;
+    header->ref_count = 1;
+    header->color = XC_GC_WHITE;
+    header->type_name = ext_rt->type_handlers[type_id] ? ext_rt->type_handlers[type_id]->name : "unknown";
+    
+    /* 获取对象指针 */
+    xc_object_t *obj = (xc_object_t *)(mem + sizeof(xc_header_t));
+    
+    /* 初始化对象 */
     memset(obj, 0, size);
     obj->size = size;
     obj->ref_count = 1;  /* Start with ref count 1 */
@@ -1712,8 +1527,8 @@ xc_object_t *xc_gc_alloc(xc_runtime_t *rt, size_t size, int type_id) {
     gc->white_list = obj;
     
     /* Update statistics */
-    gc->heap_size += size;
-    gc->used_memory += size;
+    gc->heap_size += total_size;
+    gc->used_memory += total_size;
     gc->total_allocated++;
     
     return obj;

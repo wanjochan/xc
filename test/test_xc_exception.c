@@ -6,7 +6,7 @@
 
 /* 测试辅助函数 - 抛出异常 */
 static xc_val throw_test_error(const char* message) {
-    return xc.create(XC_TYPE_ERROR, 1, message);
+    return xc.create(XC_TYPE_EXCEPTION, 1, message);
 }
 
 /* 测试辅助函数 - 创建测试函数 */

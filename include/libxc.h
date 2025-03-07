@@ -47,6 +47,8 @@
 /* 胖指针 值类型 */
 typedef void* xc_val;
 
+typedef struct xc_runtime_t xc_runtime_t;
+
 /* 函数类型定义 */
 typedef void (*xc_initializer_func)(void);
 typedef void (*xc_cleaner_func)(void);

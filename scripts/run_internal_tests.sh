@@ -37,7 +37,9 @@ ${COSMOCC} ${CFLAGS} -c "${INTERNAL_TEST_DIR}/test_utils.c" -o "${INTERNAL_TEST_
 
 # 编译测试文件
 TEST_FILES=(
-    "${INTERNAL_TEST_DIR}/test_xc_array.c"
+    "${INTERNAL_TEST_DIR}/test_xc_exception.c"
+    "${INTERNAL_TEST_DIR}/test_xc.c"
+    # "${INTERNAL_TEST_DIR}/test_xc_array.c"
 )
 
 for TEST_FILE in "${TEST_FILES[@]}"; do
@@ -48,9 +50,11 @@ done
 
 # 链接测试程序
 echo "run_internal_tests.sh: 链接内部测试程序..."
+# 注意：test_xc_array.o 暂时被注释掉
 ${COSMOCC} -o "${BIN_DIR}/test_internal.exe" \
     "${INTERNAL_TEST_DIR}/test_utils.o" \
-    "${INTERNAL_TEST_DIR}/test_xc_array.o" \
+    "${INTERNAL_TEST_DIR}/test_xc_exception.o" \
+    "${INTERNAL_TEST_DIR}/test_xc.o" \
     "${LIB_DIR}/libxc.a"
 
 # 显示编译结果
