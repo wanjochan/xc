@@ -2,12 +2,13 @@
  * xc_error.c - Error type implementation
  */
 
-#include "xc.h"
-#include "xc_error.h"
-#include "xc_object.h"
-#include "xc_gc.h"
-#include "xc_types/xc_types.h"
-#include "xc_runtime_internal.h"
+#include <stdlib.h>
+#include <string.h>
+#include <stdio.h>
+
+#include "../xc.h"
+#include "../xc_internal.h"
+#include "../xc_gc.h"
 
 /* Error object structure */
 typedef struct {

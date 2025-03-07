@@ -3,11 +3,8 @@
  */
 
 #include "../xc.h"
-#include "../xc_types/xc_types.h"
-#include "../xc_error.h"
-#include "../xc_object.h"
 #include "../xc_gc.h"
-
+#include "../xc_internal.h"
 /* Math库对象 */
 static xc_val math_obj = NULL;
 

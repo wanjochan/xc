@@ -3,10 +3,9 @@
  */
 
 #include "../xc.h"
-#include "../xc_object.h"
+#include "../xc_internal.h"
 #include "../xc_gc.h"
-#include "../xc_runtime_internal.h"
-#include "xc_types.h"
+#include "../xc_internal.h"
 
 /* Number type structure */
 typedef struct {

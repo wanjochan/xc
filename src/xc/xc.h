@@ -1,12 +1,9 @@
 #ifndef XC_H
 #define XC_H
 
-//notes: debpends on cosmopolitan, not our infrax, but will change soon
-#include "cosmopolitan.h"
+//@ref build_libxc.sh: xc.h => libxc.h for libxc.a
 
-/**
-xc.h => libxc.h, don't change until approved
- */
+#include "cosmopolitan.h" //will change to infrax in later versions
 
 #define XC_FALSE 0
 #define XC_TRUE 1

@@ -3,11 +3,8 @@
  */
 
 #include "../xc.h"
-#include "../xc_object.h"
+#include "../xc_internal.h"
 #include "../xc_gc.h"
-#include "../xc_runtime_internal.h"
-#include "xc_types.h"
-#include "xc_array.h"
 
 /* Forward declarations */
 static bool array_ensure_capacity(xc_array_t *arr, size_t needed);

@@ -2,11 +2,9 @@
  * xc_exception.c - XC exception handling implementation
  */
 
-#include "xc_exception.h"
+#include "xc.h"
 #include "xc_gc.h"
-#include "xc_object.h"
-#include "xc_runtime_internal.h"
-#include "xc_types/xc_types.h"
+#include "xc_internal.h"
 
 /* Create a stack trace entry */
 static xc_stack_trace_entry_t xc_stack_trace_entry_create(const char *function, const char *file, int line) {

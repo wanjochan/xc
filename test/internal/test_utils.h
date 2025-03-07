@@ -13,8 +13,7 @@
 
 /* Include internal headers */
 #include "../../src/xc/xc.h"
-#include "../../src/xc/xc_types/xc_types.h"
-#include "../../src/xc/xc_object.h"
+#include "../../src/xc/xc_internal.h"
 #include "../../src/xc/xc_gc.h"
 
 /* Test case structure */

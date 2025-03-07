@@ -32,7 +32,7 @@ echo "编译XC源文件..."
 
 # 编译源文件列表（按依赖顺序排序）
 SOURCE_FILES=(
-    # infrax层 (TO expose "arch" or "infrax" later)
+    # infrax层 (TODO expose "arch" or "infrax" later)
     # "${SRC_DIR}/infrax/InfraxCore.c"
     # "${SRC_DIR}/infrax/InfraxMemory.c"
     # "${SRC_DIR}/infrax/InfraxLog.c"
@@ -55,9 +55,8 @@ SOURCE_FILES=(
     "${SRC_DIR}/xc/xc_types/xc_array.c"
     "${SRC_DIR}/xc/xc_types/xc_object.c"
     "${SRC_DIR}/xc/xc_types/xc_compare.c"
+    "${SRC_DIR}/xc/xc_types/xc_error.c"
     
-    # 错误处理和虚拟机
-    "${SRC_DIR}/xc/xc_error.c"
     "${SRC_DIR}/xc/xc_vm.c"
     
     # 标准库

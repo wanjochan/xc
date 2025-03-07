@@ -3,12 +3,7 @@
  */
 #include "xc.h"
 #include "xc_gc.h"
-#include "xc_object.h"
-#include "xc_types/xc_types.h"
-#include "xc_types/xc_array.h"
-#include "xc_types/xc_object_data.h"
-#include "xc_types/xc_function.h"
-#include "xc_runtime_internal.h"
+#include "xc_internal.h"
 
 /* Forward declarations of internal type structures */
 typedef struct xc_array_t xc_array_t;

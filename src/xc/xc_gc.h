@@ -5,8 +5,7 @@
 #define XC_GC_H
 
 #include "xc.h"
-#include "xc_object.h"
-#include "xc_runtime_internal.h"
+#include "xc_internal.h"
 
 /* Garbage collector color marks for tri-color marking */
 #define XC_GC_WHITE      0   /* Object is not reachable (candidate for collection) */

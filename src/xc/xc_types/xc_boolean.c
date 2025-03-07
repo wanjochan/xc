@@ -3,10 +3,10 @@
  */
 
 #include "../xc.h"
-#include "../xc_object.h"
+#include "../xc_internal.h"
 #include "../xc_gc.h"
-#include "../xc_runtime_internal.h"
-#include "xc_types.h"
+// Removed: xc_runtime_internal.h is now part of xc_internal.h
+#include "../xc_internal.h"
 
 /* Boolean object structure */
 typedef struct {

@@ -2,11 +2,13 @@
  * xc_null.c - Null type implementation
  */
 
+#include <stdlib.h>
+#include <string.h>
+#include <stdio.h>
+
 #include "../xc.h"
-#include "../xc_object.h"
+#include "../xc_internal.h"
 #include "../xc_gc.h"
-#include "../xc_runtime_internal.h"
-#include "xc_types.h"
 
 /* Null object structure */
 typedef struct {

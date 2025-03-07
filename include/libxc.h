@@ -5,10 +5,6 @@
 #include "cosmopolitan.h"
 
 
-/**
-xc.h => libxc.h, don't change until approved
- */
-
 #define XC_FALSE 0
 #define XC_TRUE 1
 

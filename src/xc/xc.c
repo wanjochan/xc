@@ -1,6 +1,7 @@
 #include "xc.h"
-#include "xc_error.h"
 #include "xc_gc.h"
+#include "xc_internal.h"
+
 
 /* ===== 前置声明 ===== */
 
@@ -60,11 +61,11 @@ XC_REQUIRES(xc_auto_shutdown);
 /* 函数处理器类型定义 */
 typedef xc_val (*xc_function_handler)(xc_val this_obj, int argc, xc_val* argv, xc_val closure);
 
-/* 外部函数声明 */
-extern xc_val xc_function_create(xc_function_handler handler, int arg_count, xc_val closure);
-extern xc_val xc_function_get_closure(xc_val obj);
-extern xc_object_t *xc_error_get_stack_trace(xc_runtime_t *rt, xc_object_t *error);
-extern xc_val xc_function_invoke(xc_val func, xc_val this_obj, int argc, xc_val* argv);
+// /* 外部函数声明 */
+// extern xc_val xc_function_create(xc_function_handler handler, int arg_count, xc_val closure);
+// extern xc_val xc_function_get_closure(xc_val obj);
+// extern xc_object_t *xc_error_get_stack_trace(xc_runtime_t *rt, xc_object_t *error);
+// extern xc_val xc_function_invoke(xc_val func, xc_val this_obj, int argc, xc_val* argv);
 
 /* 执行栈帧结构 */
 typedef struct xc_stack_frame {

@@ -3,8 +3,7 @@
  */
 
 #include "../xc.h"
-#include "../xc_object.h"
-#include "xc_types.h"
+#include "../xc_internal.h"
 
 /* 
  * Compare two XC objects for equality

@@ -16,6 +16,7 @@
   - infrax 层代码不要直接引用 libc
   - xc 运行时只能引用 infra层，不要直接引用 libc 层
   - 对外交付的是 libxc.a 和 libxc.h，其它头文件放在 src/internal/中
+- 本项目有使用 gcc 特性【__attribute__((constructor)) 和 __attribute__((destructor))】，不过确认 cosmocc 支持；
 - 编译与测试：
 ```
 

@@ -1,10 +1,8 @@
 /*
  * xc_std_console.c - 控制台标准库实现
  */
-
 #include "../xc.h"
-#include "../xc_types/xc_types.h"
-#include "../xc_object.h"
+#include "../xc_internal.h"
 #include "../xc_gc.h"
 
 /* Console对象 */
