@@ -23,7 +23,8 @@ extern void *xc_gc_context;
 extern xc_type_t *xc_type_handlers[256];
 extern xc_exception_frame_t *xc_exception_frame;
 
-/* 内置类型的全局变量声明 */
+//TODO change to lifecycle...
+/* 内置类型的全局变量声明，name flags etc。其实我觉得直接用 lifecycle 才对 */
 extern xc_type_t *xc_null_type;
 extern xc_type_t *xc_boolean_type;
 extern xc_type_t *xc_number_type;
@@ -65,7 +66,7 @@ typedef xc_val (*xc_function_ptr_t)(xc_runtime_t *rt, xc_val this_obj, int argc,
  */
 typedef struct xc_object {
     size_t size;              /* Total size of the object in bytes */
-    struct xc_type *type;     /* Pointer to type descriptor */
+    int type_id;              /* 类型ID，直接使用XC_TYPE_*常量 */
     int ref_count;            /* Reference count for manual memory management */
     int gc_color;             /* GC mark color (white, gray, black, permanent) */
     struct xc_object *gc_next; /* Next object in the GC list */
@@ -299,7 +300,7 @@ bool xc_strict_equal(xc_runtime_t *rt, xc_object_t *a, xc_object_t *b);
 int xc_compare(xc_runtime_t *rt, xc_object_t *a, xc_object_t *b);
 
 /* Exception handling macros */
-//WARNING, DO NOT USE MACRO (wrong paradiam!)
+//WARNING, DO NOT USE MACRO
 // #define XC_TRY(rt) \
 //     do { \
 //         xc_exception_frame_t __frame; \
@@ -590,27 +591,5 @@ static void gc_mark_roots(void);
 static void gc_sweep(void);
 static void gc_mark_gray(xc_header_t* header);
 static void gc_scan_gray(void);
-
-// static void gc_mark_object(xc_val obj);
-// static void gc_mark_stack(void);
-// static void gc_mark_roots(void);
-// static void gc_sweep(void);
-// static void gc_mark_gray(xc_header_t* header);
-// static void gc_scan_gray(void);
-// static int type_of(xc_val val);
-// static int is(xc_val val, int type);
-// static xc_val create(int type, ...);
-// static xc_val invoke(xc_val func, int argc, ...);
-// static xc_val call(xc_val obj, const char* method, ...);
-// static void clear_error(void);
-// static xc_val get_current_error(void);
-// static void set_uncaught_exception_handler(xc_val handler);
-// static void push_stack_frame(const char* func_name, const char* file_name, int line_number);
-// static void pop_stack_frame(void);
-// static void throw_internal(xc_val error, bool allow_rethrow);
-// static void throw(xc_val error);
-// static xc_val try_catch_finally(xc_val try_func, xc_val catch_func, xc_val finally_func);
-// static int get_type_id(const char* name);
-// static xc_val function_handler(xc_val this_obj, int argc, xc_val* argv, xc_val closure);
 
 #endif /* XC_INTERNAL_H */

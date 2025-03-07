@@ -285,7 +285,7 @@ xc_object_t *xc_array_create_with_capacity(xc_runtime_t *rt, size_t capacity) {
     }
     
     /* 初始化对象 */
-    ((xc_object_t *)arr)->type = xc_array_type;
+    ((xc_object_t *)arr)->type_id = XC_TYPE_ARRAY;
     arr->length = 0;
     arr->capacity = capacity;
     
@@ -641,5 +641,5 @@ xc_object_t *xc_array_join(xc_runtime_t *rt, xc_object_t *arr, xc_object_t *sepa
 
 /* Type checking */
 bool xc_is_array(xc_runtime_t *rt, xc_object_t *obj) {
-    return obj && obj->type == xc_array_type;
+    return obj && obj->type_id == XC_TYPE_ARRAY;
 }

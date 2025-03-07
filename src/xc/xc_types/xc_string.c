@@ -9,8 +9,8 @@
 /* String object structure */
 typedef struct {
     xc_object_t base;  /* Must be first */
-    char *data;        /* String data */
     size_t length;     /* String length */
+    char data[];       /* Flexible array member for string data */
 } xc_string_t;
 
 /* String methods */
@@ -19,11 +19,7 @@ static void string_mark(xc_runtime_t *rt, xc_object_t *obj) {
 }
 
 static void string_free(xc_runtime_t *rt, xc_object_t *obj) {
-    xc_string_t *str = (xc_string_t *)obj;
-    if (str->data) {
-        free(str->data);
-        str->data = NULL;
-    }
+    /* 不需要额外的清理，因为字符串数据是直接跟在对象后面的 */
 }
 
 static bool string_equal(xc_runtime_t *rt, xc_object_t *a, xc_object_t *b) {
@@ -47,24 +43,14 @@ static int string_compare(xc_runtime_t *rt, xc_object_t *a, xc_object_t *b) {
     return strcmp(str_a->data, str_b->data);
 }
 
-/* Type descriptor for string type */
-static xc_type_t string_type = {
-    .name = "string",
-    .flags = XC_TYPE_PRIMITIVE,
-    .mark = string_mark,
-    .free = string_free,
-    .equal = string_equal,
-    .compare = string_compare
-};
-
 /* String creator function for use with create() */
 static xc_val string_creator(int type, va_list args) {
-    /* 从可变参数中获取字符串 */
-    const char *value = va_arg(args, const char *);
-    
-    /* 调用实际的创建函数 */
-    return (xc_val)xc_string_create(NULL, value);
+    const char *str = va_arg(args, const char *);
+    return (xc_val)xc_string_create(NULL, str);
 }
+
+/* Type descriptor for string type */
+static xc_type_t string_type = {0};
 
 /* Register string type */
 void xc_register_string_type(xc_runtime_t *rt) {
@@ -81,31 +67,36 @@ void xc_register_string_type(xc_runtime_t *rt) {
 }
 
 /* Internal helper functions */
-static xc_object_t *string_alloc(xc_runtime_t *rt, const char *str, size_t len) {
+static xc_object_t *string_alloc(xc_runtime_t *rt, size_t len) {
     /* 使用 xc_gc_alloc 分配对象，并传递类型索引 */
     xc_string_t *obj = (xc_string_t *)xc_gc_alloc(rt, sizeof(xc_string_t) + len + 1, XC_TYPE_STRING);
     if (!obj) {
         return NULL;
     }
     
-    /* 设置正确的类型指针 */
-    ((xc_object_t *)obj)->type = xc_string_type;
-
+    /* 初始化对象 */
+    ((xc_object_t *)obj)->type_id = XC_TYPE_STRING;
     obj->length = len;
-
-    if (str) {
-        memcpy(obj->data, str, len);
-    } else {
-        memset(obj->data, 0, len);
-    }
-    obj->data[len] = '\0';
-
+    
     return (xc_object_t *)obj;
 }
 
 /* Create string object with specified length */
 xc_object_t *xc_string_create_len(xc_runtime_t *rt, const char *value, size_t len) {
-    return string_alloc(rt, value, len);
+    xc_object_t *obj = string_alloc(rt, len);
+    if (!obj) {
+        return NULL;
+    }
+    
+    xc_string_t *str = (xc_string_t *)obj;
+    if (value) {
+        memcpy(str->data, value, len);
+    } else {
+        memset(str->data, 0, len);
+    }
+    str->data[len] = '\0';
+    
+    return obj;
 }
 
 /* Create string object */
@@ -115,7 +106,7 @@ xc_object_t *xc_string_create(xc_runtime_t *rt, const char *value) {
 
 /* Type checking */
 bool xc_is_string(xc_runtime_t *rt, xc_object_t *obj) {
-    return obj && obj->type == xc_string_type;
+    return obj && obj->type_id == XC_TYPE_STRING;
 }
 
 /* Value access */
@@ -165,7 +156,7 @@ xc_object_t *xc_string_concat(xc_runtime_t *rt, xc_object_t *a, xc_object_t *b) 
     }
     
     /* Allocate new string with combined length */
-    xc_string_t *result = (xc_string_t *)string_alloc(rt, NULL, len_a + len_b);
+    xc_string_t *result = (xc_string_t *)string_alloc(rt, len_a + len_b);
     if (!result) {
         return NULL;
     }

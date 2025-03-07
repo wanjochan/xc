@@ -14,6 +14,10 @@ typedef struct {
     bool value;           /* Boolean value */
 } xc_boolean_t;
 
+/* Singleton instances */
+static xc_object_t *true_singleton = NULL;
+static xc_object_t *false_singleton = NULL;
+
 /* Boolean methods */
 static void boolean_mark(xc_runtime_t *rt, xc_object_t *obj) {
     /* Booleans don't have references to other objects */
@@ -79,24 +83,38 @@ void xc_register_boolean_type(xc_runtime_t *rt) {
     xc_boolean_type = &boolean_type;
 }
 
-/* Create boolean object */
+/* Create a boolean object */
 xc_object_t *xc_boolean_create(xc_runtime_t *rt, bool value) {
-    // 分配内存
+    /* 如果单例已存在，直接返回 */
+    if (value && true_singleton) {
+        return true_singleton;
+    } else if (!value && false_singleton) {
+        return false_singleton;
+    }
+    
+    /* 分配内存 */
     xc_boolean_t *obj = (xc_boolean_t *)xc_gc_alloc(rt, sizeof(xc_boolean_t), XC_TYPE_BOOL);
     if (!obj) {
         return NULL;
     }
     
-    // 初始化对象
-    ((xc_object_t *)obj)->type = xc_boolean_type;
+    /* 初始化对象 */
+    ((xc_object_t *)obj)->type_id = XC_TYPE_BOOL;
     obj->value = value;
+    
+    /* 保存单例 */
+    if (value) {
+        true_singleton = (xc_object_t *)obj;
+    } else {
+        false_singleton = (xc_object_t *)obj;
+    }
     
     return (xc_object_t *)obj;
 }
 
 /* Type checking */
 bool xc_is_boolean(xc_runtime_t *rt, xc_object_t *obj) {
-    return obj && obj->type == xc_boolean_type;
+    return obj && obj->type_id == XC_TYPE_BOOL;
 }
 
 /* Value access */

@@ -150,28 +150,28 @@ void xc_exception_throw(xc_runtime_t *rt, xc_object_t *exception) {
 
 /* Get exception type */
 int xc_exception_get_type(xc_runtime_t *rt, xc_object_t *exception) {
-    if (!exception || exception->type != xc_error_type) return -1;
+    if (!exception || exception->type_id != XC_TYPE_EXCEPTION) return -1;
     xc_exception_t *exc = (xc_exception_t *)exception;
     return exc->type;
 }
 
 /* Get exception message */
 const char *xc_exception_get_message(xc_runtime_t *rt, xc_object_t *exception) {
-    if (!exception || exception->type != xc_error_type) return "Not an exception";
+    if (!exception || exception->type_id != XC_TYPE_EXCEPTION) return "Not an exception";
     xc_exception_t *exc = (xc_exception_t *)exception;
     return exc->message;
 }
 
 /* Get exception cause */
 xc_object_t *xc_exception_get_cause(xc_runtime_t *rt, xc_object_t *exception) {
-    if (!exception || exception->type != xc_error_type) return NULL;
+    if (!exception || exception->type_id != XC_TYPE_EXCEPTION) return NULL;
     xc_exception_t *exc = (xc_exception_t *)exception;
     return (xc_object_t *)exc->cause;
 }
 
 /* Get exception stack trace */
 xc_stack_trace_t *xc_exception_get_stack_trace(xc_runtime_t *rt, xc_object_t *exception) {
-    if (!exception || exception->type != xc_error_type) return NULL;
+    if (!exception || exception->type_id != XC_TYPE_EXCEPTION) return NULL;
     xc_exception_t *exc = (xc_exception_t *)exception;
     return exc->stack_trace;
 }
@@ -277,47 +277,48 @@ xc_object_t *xc_exception_create_internal_error(xc_runtime_t *rt, const char *me
     return xc_exception_create(rt, XC_EXCEPTION_TYPE_INTERNAL, message);
 }
 
-/* Error type handler - free function */
+/* Free an error object */
 static void xc_error_free(xc_runtime_t *rt, xc_object_t *obj) {
-    if (!obj || obj->type != xc_error_type) return;
+    if (!obj || obj->type_id != XC_TYPE_EXCEPTION) return;
     
-    xc_exception_t *error = (xc_exception_t *)obj;
+    xc_exception_t *exception = (xc_exception_t *)obj;
     
     /* Free the message */
-    if (error->message) {
-        free(error->message);
+    if (exception->message) {
+        free(exception->message);
+        exception->message = NULL;
     }
     
     /* Free the stack trace */
-    if (error->stack_trace) {
-        if (error->stack_trace->entries) {
-            free(error->stack_trace->entries);
-        }
-        free(error->stack_trace);
+    if (exception->stack_trace) {
+        xc_stack_trace_free(exception->stack_trace);
+        exception->stack_trace = NULL;
     }
+    
+    /* Note: We don't free the cause, as it's managed by GC */
 }
 
-/* Error type handler - mark function */
+/* Mark an error object for GC */
 static void xc_error_mark(xc_runtime_t *rt, xc_object_t *obj) {
-    if (!obj || obj->type != xc_error_type) return;
+    if (!obj || obj->type_id != XC_TYPE_EXCEPTION) return;
     
-    xc_exception_t *error = (xc_exception_t *)obj;
+    xc_exception_t *exception = (xc_exception_t *)obj;
     
-    /* Mark the cause exception */
-    if (error->cause) {
-        xc_gc_mark(rt, (xc_object_t *)error->cause);
+    /* Mark the cause if any */
+    if (exception->cause) {
+        xc_gc_mark(rt, (xc_object_t *)exception->cause);
     }
 }
 
-/* Error type handler - to string function */
+/* Convert an error to a string */
 static xc_object_t *xc_error_to_string(xc_runtime_t *rt, xc_object_t *obj) {
-    if (!obj || obj->type != xc_error_type) return NULL;
+    if (!obj || obj->type_id != XC_TYPE_EXCEPTION) return NULL;
     
-    xc_exception_t *error = (xc_exception_t *)obj;
+    xc_exception_t *exception = (xc_exception_t *)obj;
     
     /* Build a string representation */
     const char *type_str = "Error";
-    switch (error->type) {
+    switch (exception->type) {
         case XC_EXCEPTION_TYPE_SYNTAX:    type_str = "SyntaxError"; break;
         case XC_EXCEPTION_TYPE_TYPE:      type_str = "TypeError"; break;
         case XC_EXCEPTION_TYPE_REFERENCE: type_str = "ReferenceError"; break;
@@ -326,7 +327,7 @@ static xc_object_t *xc_error_to_string(xc_runtime_t *rt, xc_object_t *obj) {
         case XC_EXCEPTION_TYPE_INTERNAL:  type_str = "InternalError"; break;
     }
     
-    const char *message = error->message ? error->message : "No message";
+    const char *message = exception->message ? exception->message : "No message";
     
     /* Allocate string buffer */
     size_t len = strlen(type_str) + 2 + strlen(message) + 1;
@@ -344,8 +345,10 @@ static xc_object_t *xc_error_to_string(xc_runtime_t *rt, xc_object_t *obj) {
 
 /* Register error type */
 void xc_register_error_type(xc_runtime_t *rt) {
+    static xc_type_t *error_type_ptr = NULL;
+    
     // 如果已经注册，直接返回
-    if (xc_error_type) return;
+    if (error_type_ptr) return;
     
     // 初始化错误类型
     error_type.name = "error";
@@ -356,5 +359,5 @@ void xc_register_error_type(xc_runtime_t *rt) {
     error_type.compare = NULL;  // 错误对象不支持排序比较
     
     // 注册类型
-    xc_error_type = &error_type;
+    error_type_ptr = &error_type;
 }

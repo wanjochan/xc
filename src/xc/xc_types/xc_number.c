@@ -75,16 +75,16 @@ void xc_register_number_type(xc_runtime_t *rt) {
     xc_number_type = &number_type;
 }
 
-/* Create number object */
+/* Create a number object */
 xc_object_t *xc_number_create(xc_runtime_t *rt, double value) {
-    // 分配内存
+    /* 分配内存 */
     xc_number_t *obj = (xc_number_t *)xc_gc_alloc(rt, sizeof(xc_number_t), XC_TYPE_NUMBER);
     if (!obj) {
         return NULL;
     }
     
-    // 初始化对象
-    ((xc_object_t *)obj)->type = xc_number_type;
+    /* 初始化对象 */
+    ((xc_object_t *)obj)->type_id = XC_TYPE_NUMBER;
     obj->value = value;
     
     return (xc_object_t *)obj;
@@ -92,7 +92,7 @@ xc_object_t *xc_number_create(xc_runtime_t *rt, double value) {
 
 /* Type checking */
 bool xc_is_number(xc_runtime_t *rt, xc_object_t *obj) {
-    return obj && obj->type == xc_number_type;
+    return obj && obj->type_id == XC_TYPE_NUMBER;
 }
 
 /* Value access */

@@ -89,16 +89,16 @@ void xc_register_function_type(xc_runtime_t *rt) {
     xc_function_type = &function_type;
 }
 
-/* Create function object */
+/* Create a function object */
 xc_object_t *xc_function_create(xc_runtime_t *rt, xc_function_ptr_t fn, xc_object_t *closure) {
-    // 分配内存
+    /* 分配内存 */
     xc_function_t *obj = (xc_function_t *)xc_gc_alloc(rt, sizeof(xc_function_t), XC_TYPE_FUNC);
     if (!obj) {
         return NULL;
     }
     
-    // 初始化对象
-    ((xc_object_t *)obj)->type = xc_function_type;
+    /* 初始化对象 */
+    ((xc_object_t *)obj)->type_id = XC_TYPE_FUNC;
     obj->handler = fn;
     obj->closure = closure;
     obj->this_obj = NULL;
@@ -144,7 +144,7 @@ xc_object_t *xc_function_call(xc_runtime_t *rt, xc_object_t *func, xc_object_t *
 
 /* Type checking */
 bool xc_is_function(xc_runtime_t *rt, xc_object_t *obj) {
-    return obj && obj->type == xc_function_type;
+    return obj && obj->type_id == XC_TYPE_FUNC;
 }
 
 /* Access closure */

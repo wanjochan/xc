@@ -76,8 +76,8 @@ void xc_register_null_type(xc_runtime_t *rt) {
         /* 使用 xc_gc_alloc 分配对象，并传递类型索引 */
         xc_null_t *obj = (xc_null_t *)xc_gc_alloc(rt, sizeof(xc_null_t), XC_TYPE_NULL);
         if (null_singleton) {
-            /* 设置正确的类型指针 */
-            ((xc_object_t *)obj)->type = xc_null_type;
+            /* 设置正确的类型ID */
+            ((xc_object_t *)obj)->type_id = XC_TYPE_NULL;
             /* 使用 xc_gc_mark_permanent 标记为永久对象 */
             xc_gc_mark_permanent(rt, (xc_object_t *)obj);
             null_singleton = (xc_object_t *)obj;
@@ -99,7 +99,7 @@ xc_object_t *xc_null_create(xc_runtime_t *rt) {
     }
     
     /* 初始化对象 */
-    ((xc_object_t *)obj)->type = xc_null_type;
+    ((xc_object_t *)obj)->type_id = XC_TYPE_NULL;
     
     /* 保存单例 */
     null_singleton = (xc_object_t *)obj;
@@ -109,5 +109,5 @@ xc_object_t *xc_null_create(xc_runtime_t *rt) {
 
 /* Type checking */
 bool xc_is_null(xc_runtime_t *rt, xc_object_t *obj) {
-    return obj && obj->type == xc_null_type;
+    return obj && obj->type_id == XC_TYPE_NULL;
 }

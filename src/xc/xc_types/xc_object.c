@@ -152,7 +152,7 @@ void xc_register_object_type(xc_runtime_t *rt) {
     xc_object_type = &object_type;
 }
 
-/* Create object */
+/* Create an object */
 xc_object_t *xc_object_create(xc_runtime_t *rt) {
     /* 使用 xc_gc_alloc 分配对象，并传递类型索引 */
     xc_object_data_t *obj = (xc_object_data_t *)xc_gc_alloc(rt, sizeof(xc_object_data_t), XC_TYPE_OBJECT);
@@ -160,14 +160,13 @@ xc_object_t *xc_object_create(xc_runtime_t *rt) {
         return NULL;
     }
     
-    /* 设置正确的类型指针 */
-    ((xc_object_t *)obj)->type = xc_object_type;
-
+    /* 初始化对象 */
+    ((xc_object_t *)obj)->type_id = XC_TYPE_OBJECT;
     obj->properties = NULL;
     obj->count = 0;
     obj->capacity = 0;
     obj->prototype = NULL;
-
+    
     return (xc_object_t *)obj;
 }
 
@@ -265,7 +264,7 @@ void xc_object_delete(xc_runtime_t *rt, xc_object_t *obj, const char *key) {
 
 /* Type checking */
 bool xc_is_object(xc_runtime_t *rt, xc_object_t *obj) {
-    return obj && obj->type == xc_object_type;
+    return obj && obj->type_id == XC_TYPE_OBJECT;
 }
 
 /* Prototype operations */
