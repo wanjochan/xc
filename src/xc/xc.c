@@ -2,31 +2,7 @@
 #include "xc_gc.h"
 #include "xc_internal.h"
 
-/* 按顺序初始化所有基本类型 */
-void xc_types_init(void) {
-    xc_register_string_type(&xc);
-    xc_register_boolean_type(&xc);
-    xc_register_number_type(&xc);
-    xc_register_array_type(&xc);
-    xc_register_object_type(&xc);
-    xc_register_function_type(&xc);
-    xc_register_error_type(&xc);
-}
 
-/* use GCC FEATURE */
-void __attribute__((constructor)) xc_auto_init(void) {
-    printf("DEBUG xc_auto_init()\n");//TODO log-level
-    xc_types_init();//
-}
-
-void __attribute__((destructor)) xc_auto_shutdown(void) {
-    printf("DEBUG xc_auto_shutdown()\n");//TODO log-level
-    xc.gc();
-}
-
-// 添加强制引用以确保构造函数编译时被保留
-XC_REQUIRES(xc_auto_init);
-XC_REQUIRES(xc_auto_shutdown);
 
 /* 错误代码 */
 #define XC_ERR_NONE 0
@@ -195,7 +171,6 @@ static void throw_internal(xc_val error, bool allow_rethrow);
 static void throw(xc_val error);
 static xc_val try_catch_finally(xc_val try_func, xc_val catch_func, xc_val finally_func);
 static int get_type_id(const char* name);
-static void gc(void);
 static xc_val function_handler(xc_val this_obj, int argc, xc_val* argv, xc_val closure);
 
 ///////////////////////////////////////////////////
@@ -407,7 +382,7 @@ static void gc_sweep(void) {
 }
 
 /* 执行垃圾回收 */
-static void gc(void) {
+void xc_gc(void) {
     ensure_thread_initialized();
     
     if (!_thread_gc.gc_first) return;
@@ -498,7 +473,7 @@ static xc_val alloc_object(int type, ...) {
     
     /* 检查是否需要进行垃圾回收 */
     if (_thread_gc.allocation_count > 1000 || _thread_gc.total_memory > _thread_gc.gc_threshold) {
-        gc();
+        xc_gc();
     }
     
     /* 返回对象指针 */
@@ -1183,11 +1158,36 @@ xc_object_t *xc_error_get_stack_trace(xc_runtime_t *rt, xc_object_t *error) {
     return (xc_object_t *)stack_array;
 }
 
-void xc_auto_init(void);
-void xc_auto_shutdown(void);
+// void xc_auto_init(void);
+// void xc_auto_shutdown(void);
+
+/* 按顺序初始化所有基本类型 */
+void xc_types_init(void) {
+    xc_register_string_type(&xc);
+    xc_register_boolean_type(&xc);
+    xc_register_number_type(&xc);
+    xc_register_array_type(&xc);
+    xc_register_object_type(&xc);
+    xc_register_function_type(&xc);
+    xc_register_error_type(&xc);
+}
+
+/* use GCC FEATURE */
+void __attribute__((constructor)) xc_auto_init(void) {
+    printf("DEBUG xc_auto_init()\n");//TODO log-level
+    xc_types_init();//
+}
+
+void __attribute__((destructor)) xc_auto_shutdown(void) {
+    printf("DEBUG xc_auto_shutdown()\n");//TODO log-level
+    xc_gc();
+}
+
+// 添加强制引用以确保构造函数编译时被保留
+XC_REQUIRES(xc_auto_init);
+XC_REQUIRES(xc_auto_shutdown);
+
 xc_runtime_t xc = {
-    // .init = xc_auto_init,
-    // .shutdown = xc_auto_shutdown,
     .alloc_object = alloc_object,
     .type_of = type_of,
     .is = is,
@@ -1204,7 +1204,10 @@ xc_runtime_t xc = {
     .set_uncaught_exception_handler = set_uncaught_exception_handler,
     .get_current_error = get_current_error,
     .clear_error = clear_error,
-    .gc = gc
+    //.gc = xc_gc,
+    //.gc_force = xc_gc,
+    // .init = xc_auto_init,
+    // .shutdown = xc_auto_shutdown
 };
 
 /* 添加栈帧 */

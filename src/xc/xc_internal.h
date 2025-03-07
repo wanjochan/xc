@@ -348,4 +348,6 @@ xc_object_t *xc_exception_create_internal_error(xc_runtime_t *rt, const char *me
 /* Function for invoking functions */
 xc_val xc_function_invoke(xc_val func, xc_val this_obj, int argc, xc_val* argv);
 
+void xc_gc(void);
+
 #endif /* XC_INTERNAL_H */

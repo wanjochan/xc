@@ -76,6 +76,8 @@ typedef struct {
 
 /* 运行时接口结构 */
 typedef struct xc_runtime_t {
+    // xc_runtime_t *self;//全局单例现在不用搞 self
+
     /* type */
     xc_val (*alloc_object)(int type, ...);
     xc_val (*create)(int type, ...);
@@ -99,9 +101,10 @@ typedef struct xc_runtime_t {
     void (*set_uncaught_exception_handler)(xc_val handler);
     xc_val (*get_current_error)(void);
     void (*clear_error)(void);
-    
-    /* internal */
-    void (*gc)(void);
+
+    //暂时不隐藏，后面有需求再加 gc_force();    
+    // void (*gc)(void);
+
 } xc_runtime_t;
 
 /* 全局运行时对象单例 */

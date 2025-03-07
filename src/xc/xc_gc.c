@@ -574,8 +574,8 @@ bool xc_gc_is_enabled(xc_runtime_t *rt) {
  * Collect garbage
  */
 void xc_gc_collect(void) {
-    xc_runtime_t *rt = &xc;
-    rt->gc();
+    // xc_runtime_t *rt = &xc;
+    xc_gc();
 }
 
 /**
