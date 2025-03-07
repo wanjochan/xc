@@ -14,9 +14,6 @@ void test_array_basic(void) {
     
     printf("Testing basic array functionality through public API...\n");
     
-    // Initialize XC runtime
-    xc.init();
-    
     // Create an array
     xc_val arr = xc.create(XC_TYPE_ARRAY);
     TEST_ASSERT(arr != NULL, "Array creation failed");
@@ -58,10 +55,6 @@ void test_array_basic(void) {
     xc_val new_length = xc.call(arr, "length");
     TEST_ASSERT(new_length != NULL, "Array length retrieval after pop failed");
     
-    // Clean up
-    xc.gc();
-    xc.shutdown();
-    
     printf("Array test completed successfully.\n");
     
     test_end("Array Basic Functionality (External)");
@@ -72,9 +65,6 @@ void test_array_advanced(void) {
     test_start("Array Advanced Operations (External)");
     
     printf("Testing advanced array operations through public API...\n");
-    
-    // Initialize XC runtime
-    xc.init();
     
     // Create an array
     xc_val arr = xc.create(XC_TYPE_ARRAY);
@@ -113,10 +103,6 @@ void test_array_advanced(void) {
     xc_val joined = xc.call(arr, "join", separator);
     TEST_ASSERT(joined != NULL, "Join operation failed");
     TEST_ASSERT(xc.is(joined, XC_TYPE_STRING), "Join result should be a string");
-    
-    // Clean up
-    xc.gc();
-    xc.shutdown();
     
     printf("Array advanced operations test completed successfully.\n");
     

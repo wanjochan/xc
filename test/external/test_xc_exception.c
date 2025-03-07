@@ -49,9 +49,6 @@ void test_exception_basic(void) {
     
     printf("Testing basic exception handling through public API...\n");
     
-    // Initialize XC runtime
-    xc.init();
-    
     // Reset global flags
     catch_handler_called = 0;
     finally_handler_called = 0;
@@ -68,10 +65,6 @@ void test_exception_basic(void) {
     TEST_ASSERT(catch_handler_called == 1, "Catch handler was not called");
     TEST_ASSERT(finally_handler_called == 1, "Finally handler was not called");
     
-    // Clean up
-    xc.gc();
-    xc.shutdown();
-    
     printf("Exception test completed successfully.\n");
     
     test_end("Exception Basic Functionality (External)");
@@ -82,9 +75,6 @@ void test_uncaught_exception(void) {
     test_start("Uncaught Exception Handling (External)");
     
     printf("Testing uncaught exception handling through public API...\n");
-    
-    // Initialize XC runtime
-    xc.init();
     
     // Create a custom uncaught exception handler
     xc_val uncaught_handler = xc.create(XC_TYPE_FUNC, "function(error) { return 'Uncaught: ' + error.message; }");
@@ -109,10 +99,6 @@ void test_uncaught_exception(void) {
     // Verify error was cleared
     current_error = xc.get_current_error();
     TEST_ASSERT(current_error == NULL, "Error should be cleared");
-    
-    // Clean up
-    xc.gc();
-    xc.shutdown();
     
     printf("Uncaught exception test completed successfully.\n");
     

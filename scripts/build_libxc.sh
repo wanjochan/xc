@@ -43,7 +43,6 @@ SOURCE_FILES=(
     
     # 核心运行时
     "${SRC_DIR}/xc/xc.c"
-    "${SRC_DIR}/xc/xc_init.c"
     "${SRC_DIR}/xc/xc_gc.c"
     "${SRC_DIR}/xc/xc_exception.c"
     

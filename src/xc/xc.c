@@ -1,5 +1,43 @@
 #include "xc.h"
 #include "xc_error.h"
+#include "xc_gc.h"
+
+/* ===== 前置声明 ===== */
+
+void xc_register_string_type(xc_runtime_t *rt);
+void xc_register_boolean_type(xc_runtime_t *rt);
+void xc_register_number_type(xc_runtime_t *rt);
+void xc_register_array_type(xc_runtime_t *rt);
+void xc_register_object_type(xc_runtime_t *rt);
+void xc_register_function_type(xc_runtime_t *rt);
+
+/* 按顺序初始化所有基本类型 */
+void xc_types_init(void) {
+
+    /* 注册基本类型 - 顺序很重要 */
+    xc_register_string_type(&xc);
+    xc_register_boolean_type(&xc);
+    xc_register_number_type(&xc);
+    xc_register_array_type(&xc);
+    xc_register_object_type(&xc);
+    xc_register_function_type(&xc);
+    //xc_register_error_type(&xc);//TODO!
+}
+
+/* use GCC FEATURE */
+void __attribute__((constructor)) xc_auto_init(void) {
+    printf("DEBUG xc_auto_init()\n");//TODO log-level
+    xc_types_init();//
+}
+
+void __attribute__((destructor)) xc_auto_shutdown(void) {
+    printf("DEBUG xc_auto_shutdown()\n");//TODO log-level
+    xc.gc();
+}
+
+// 添加强制引用以确保构造函数编译时被保留
+XC_REQUIRES(xc_auto_init);
+XC_REQUIRES(xc_auto_shutdown);
 
 /* 错误代码 */
 #define XC_ERR_NONE 0
@@ -148,6 +186,30 @@ static void gc_sweep(void);
 static void gc_mark_gray(xc_header_t* header);
 static void gc_scan_gray(void);
 
+// static void gc_mark_object(xc_val obj);
+// static void gc_mark_stack(void);
+// static void gc_mark_roots(void);
+// static void gc_sweep(void);
+// static void gc_mark_gray(xc_header_t* header);
+// static void gc_scan_gray(void);
+static int type_of(xc_val val);
+static int is(xc_val val, int type);
+static xc_val create(int type, ...);
+static xc_val invoke(xc_val func, int argc, ...);
+static xc_val call(xc_val obj, const char* method, ...);
+static void clear_error(void);
+static xc_val get_current_error(void);
+static void set_uncaught_exception_handler(xc_val handler);
+static void push_stack_frame(const char* func_name, const char* file_name, int line_number);
+static void pop_stack_frame(void);
+static void throw_internal(xc_val error, bool allow_rethrow);
+static void throw(xc_val error);
+static xc_val try_catch_finally(xc_val try_func, xc_val catch_func, xc_val finally_func);
+static int get_type_id(const char* name);
+static void gc(void);
+static xc_val function_handler(xc_val this_obj, int argc, xc_val* argv, xc_val closure);
+
+///////////////////////////////////////////////////
 /* 简单的哈希函数 */
 static unsigned int hash_string(const char* str) {
     unsigned int hash = 0;
@@ -1135,8 +1197,8 @@ xc_object_t *xc_error_get_stack_trace(xc_runtime_t *rt, xc_object_t *error) {
 void xc_auto_init(void);
 void xc_auto_shutdown(void);
 xc_runtime_t xc = {
-    .init = xc_auto_init,
-    .shutdown = xc_auto_shutdown,
+    // .init = xc_auto_init,
+    // .shutdown = xc_auto_shutdown,
     .alloc_object = alloc_object,
     .type_of = type_of,
     .is = is,
@@ -1155,30 +1217,6 @@ xc_runtime_t xc = {
     .clear_error = clear_error,
     .gc = gc
 };
-
-/* ===== 前置声明 ===== */
-static void gc_mark_object(xc_val obj);
-static void gc_mark_stack(void);
-static void gc_mark_roots(void);
-static void gc_sweep(void);
-static void gc_mark_gray(xc_header_t* header);
-static void gc_scan_gray(void);
-static int type_of(xc_val val);
-static int is(xc_val val, int type);
-static xc_val create(int type, ...);
-static xc_val invoke(xc_val func, int argc, ...);
-static xc_val call(xc_val obj, const char* method, ...);
-static void clear_error(void);
-static xc_val get_current_error(void);
-static void set_uncaught_exception_handler(xc_val handler);
-static void push_stack_frame(const char* func_name, const char* file_name, int line_number);
-static void pop_stack_frame(void);
-static void throw_internal(xc_val error, bool allow_rethrow);
-static void throw(xc_val error);
-static xc_val try_catch_finally(xc_val try_func, xc_val catch_func, xc_val finally_func);
-static int get_type_id(const char* name);
-static void gc(void);
-static xc_val function_handler(xc_val this_obj, int argc, xc_val* argv, xc_val closure);
 
 /* 添加栈帧 */
 static void push_stack_frame(const char* func_name, const char* file_name, int line_number) {

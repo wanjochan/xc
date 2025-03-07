@@ -14,9 +14,6 @@ void test_object_basic(void) {
     
     printf("Testing basic object functionality through public API...\n");
     
-    // Initialize XC runtime
-    xc.init();
-    
     // Create an object
     xc_val obj = xc.create(XC_TYPE_OBJECT);
     TEST_ASSERT(obj != NULL, "Object creation failed");
@@ -49,10 +46,6 @@ void test_object_basic(void) {
     TEST_ASSERT(xc.dot(obj, "name") != NULL, "Property 'name' should exist");
     TEST_ASSERT(xc.dot(obj, "nonexistent") == NULL, "Property 'nonexistent' should not exist");
     
-    // Clean up
-    xc.gc();
-    xc.shutdown();
-    
     printf("Object test completed successfully.\n");
     
     test_end("Object Basic Functionality (External)");
@@ -63,9 +56,6 @@ void test_object_prototype(void) {
     test_start("Object Prototype Inheritance (External)");
     
     printf("Testing object prototype inheritance through public API...\n");
-    
-    // Initialize XC runtime
-    xc.init();
     
     // Create a prototype object
     xc_val proto = xc.create(XC_TYPE_OBJECT);
@@ -100,10 +90,6 @@ void test_object_prototype(void) {
     
     result = xc.dot(obj, "protoProperty");
     TEST_ASSERT(result != NULL, "Shadowed property retrieval failed");
-    
-    // Clean up
-    xc.gc();
-    xc.shutdown();
     
     printf("Object prototype test completed successfully.\n");
     

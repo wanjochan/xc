@@ -1,6 +1,3 @@
-/*
- * XC - 极致轻量的C运行时引擎
- */
 #ifndef XC_H
 #define XC_H
 
@@ -102,11 +99,10 @@ typedef struct xc_runtime_t {
     xc_val (*get_current_error)(void);
     void (*clear_error)(void);
     
-    /* 垃圾回收 */
+    /* internal */
     void (*gc)(void);
-
-    void (*init)(void);
-    void (*shutdown)(void);
+    // void (*init)(void);
+    // void (*shutdown)(void);
     
 } xc_runtime_t;
 

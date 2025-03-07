@@ -14,9 +14,6 @@ void test_function_basic(void) {
     
     printf("Testing basic function functionality through public API...\n");
     
-    // Initialize XC runtime
-    xc.init();
-    
     // Create a simple function that adds two numbers
     xc_val add_func = xc.create(XC_TYPE_FUNC, "function(a, b) { return a + b; }");
     TEST_ASSERT(add_func != NULL, "Function creation failed");
@@ -31,10 +28,6 @@ void test_function_basic(void) {
     TEST_ASSERT(result != NULL, "Function invocation failed");
     TEST_ASSERT(xc.is(result, XC_TYPE_NUMBER), "Function result type check failed");
     
-    // Clean up
-    xc.gc();
-    xc.shutdown();
-    
     printf("Function test completed successfully.\n");
     
     test_end("Function Basic Functionality (External)");
@@ -45,9 +38,6 @@ void test_function_closure(void) {
     test_start("Function Closure Functionality (External)");
     
     printf("Testing function closure functionality through public API...\n");
-    
-    // Initialize XC runtime
-    xc.init();
     
     // Create an object to hold our counter
     xc_val counter_obj = xc.create(XC_TYPE_OBJECT);
@@ -77,10 +67,6 @@ void test_function_closure(void) {
     // Check the final counter value
     xc_val final_count = xc.dot(counter_obj, "count");
     TEST_ASSERT(final_count != NULL, "Counter retrieval failed");
-    
-    // Clean up
-    xc.gc();
-    xc.shutdown();
     
     printf("Function closure test completed successfully.\n");
     

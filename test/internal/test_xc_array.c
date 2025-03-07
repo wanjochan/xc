@@ -422,10 +422,6 @@ void run_array_tests() {
     // Initialize the runtime
     rt = &xc;
     
-    // Initialize all types using xc_init()
-    // xc_init();
-    xc.init();
-    
     // Run only the first test for now
     test_array_create();
     /*
@@ -439,7 +435,6 @@ void run_array_tests() {
     test_array_memory();
     test_nested_arrays();
     */
-    xc.shutdown();
     printf("Array creation test passed!\n");
 }
 
