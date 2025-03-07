@@ -1,6 +1,12 @@
 #include "xc.h"
 #include "xc_internal.h"
 
+// Define MAX_TYPE_ID as 10
+#define MAX_TYPE_ID 10
+
+// Define xc_type_handlers as an array of type lifecycle pointers
+xc_type_lifecycle_t *xc_type_handlers[256];
+
 /* 根据类型ID获取类型处理器 */
 xc_type_lifecycle_t* get_type_handler(int type_id) {
     if (type_id >= 0 && type_id < 256) {
@@ -812,8 +818,7 @@ xc_object_t *xc_error_get_stack_trace(xc_runtime_t *rt, xc_object_t *error) {
 /* use GCC FEATURE */
 void __attribute__((constructor)) xc_auto_init(void) {
     printf("DEBUG xc_auto_init()\n");//TODO log-level
-    // 初始化GC系统
-    xc_gc_init(&xc, NULL);//@see xc_gc.c
+    xc_gc_init_auto(&xc, NULL);//@see xc_gc.c
 
     xc_register_string_type(&xc);
     xc_register_boolean_type(&xc);
@@ -833,12 +838,6 @@ void __attribute__((destructor)) xc_auto_shutdown(void) {
 // 添加强制引用以确保构造函数编译时被保留
 XC_REQUIRES(xc_auto_init);
 XC_REQUIRES(xc_auto_shutdown);
-
-/* 定义全局变量 */
-//全局的 gc
-void *xc_gc_context = NULL;
-xc_type_lifecycle_t *xc_type_handlers[256] = {0};
-xc_exception_frame_t *xc_exception_frame = NULL;
 
 /* 全局类型注册表 */
 xc_type_registry_t type_registry = {0};

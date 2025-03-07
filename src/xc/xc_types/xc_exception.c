@@ -4,7 +4,7 @@
 #include <setjmp.h>
 
 /* 异常帧链表头 - 使用外部声明而不是定义 */
-extern xc_exception_frame_t *xc_exception_frame;
+xc_exception_frame_t *xc_exception_frame = NULL;
 
 /* Forward declarations */
 static void xc_error_free(xc_runtime_t *rt, xc_object_t *obj);

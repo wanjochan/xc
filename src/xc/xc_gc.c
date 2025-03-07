@@ -1,69 +1,73 @@
 #include "xc.h"
 #include "xc_internal.h"
 
-// /* Garbage collector color marks for tri-color marking */
-// #define XC_GC_WHITE      0   /* Object is not reachable (candidate for collection) */
-// #define XC_GC_GRAY       1   /* Object is reachable but its children haven't been scanned */
-// #define XC_GC_BLACK      2   /* Object is reachable and its children have been scanned */
-// #define XC_GC_PERMANENT  3   /* Object is permanently reachable (never collected) */
+/* Garbage collector color marks for tri-color marking */
+#define XC_GC_WHITE      0   /* Object is not reachable (candidate for collection) */
+#define XC_GC_GRAY       1   /* Object is reachable but its children haven't been scanned */
+#define XC_GC_BLACK      2   /* Object is reachable and its children have been scanned */
+#define XC_GC_PERMANENT  3   /* Object is permanently reachable (never collected) */
 
-void xc_gc_thread_init_auto(void) {
-    // /*
-    // if (_thread_gc.initialized) {
-    //     return;
-    // }
-    // /* 初始化垃圾回收器状态 */
-    // _thread_gc.gc_first = NULL;
-    // _thread_gc.total_memory = 0;
-    // _thread_gc.gc_threshold = 1024 * 1024; /* 1MB */
-    // _thread_gc.initialized = 1;
+// void xc_gc_thread_init_auto(void) {
+//     // if (_xc_thread_state.initialized) {
+//     //     return;
+//     // }
+//     // /*
+//     // if (_thread_gc.initialized) {
+//     //     return;
+//     // }
+//     // /* 初始化垃圾回收器状态 */
+//     // _thread_gc.gc_first = NULL;
+//     // _thread_gc.total_memory = 0;
+//     // _thread_gc.gc_threshold = 1024 * 1024; /* 1MB */
+//     // _thread_gc.initialized = 1;
     
-    // /* 初始化灰色对象栈 */
-    // _thread_gc.gray_count = 0;
-    // _thread_gc.gray_capacity = 256;
-    // _thread_gc.gray_stack = (xc_header_t**)malloc(_thread_gc.gray_capacity * sizeof(xc_header_t*));
+//     // /* 初始化灰色对象栈 */
+//     // _thread_gc.gray_count = 0;
+//     // _thread_gc.gray_capacity = 256;
+//     // _thread_gc.gray_stack = (xc_header_t**)malloc(_thread_gc.gray_capacity * sizeof(xc_header_t*));
     
-    // /* 初始化其他字段 */
-    // _thread_gc.allocation_count = 0;
+//     // /* 初始化其他字段 */
+//     // _thread_gc.allocation_count = 0;
     
-    // /* 记录当前栈底位置 */
-    // int dummy;
-    // _thread_gc.stack_bottom = &dummy;
-    // */
+//     // /* 记录当前栈底位置 */
+//     // int dummy;
+//     // _thread_gc.stack_bottom = &dummy;
+//     // */
     
-    /* 初始化线程状态 */
-    _xc_thread_state.top = NULL;
-    _xc_thread_state.depth = 0;
-    _xc_thread_state.current = NULL;
-    _xc_thread_state.current_error = NULL;
-    _xc_thread_state.in_try_block = false;
-    _xc_thread_state.uncaught_handler = NULL;
+//     // /* 初始化线程状态 */
+//     // _xc_thread_state.initialized = 1;
+//     // _xc_thread_state.top = NULL;
+//     // _xc_thread_state.depth = 0;
+//     // _xc_thread_state.current = NULL;
+//     // _xc_thread_state.current_error = NULL;
+//     // _xc_thread_state.in_try_block = false;
+//     // _xc_thread_state.uncaught_handler = NULL;
 
-    atexit(xc_gc_thread_exit);
-}
+//     // atexit(xc_gc_thread_exit);
+// }
 
-void xc_gc_thread_exit(void) {
-    // /*
-    // if (_thread_gc.initialized) {
-    //     /* 手动释放所有剩余对象，但不调用终结器 */
-    //     xc_header_t* current = _thread_gc.gc_first;
-    //     while (current) {
-    //         xc_header_t* next = current->next_gc;
-    //         free(current);
-    //         current = next;
-    //     }
+// void xc_gc_thread_exit(void) {
+//     // /*
+//     // if (_thread_gc.initialized) {
+//     //     /* 手动释放所有剩余对象，但不调用终结器 */
+//     //     xc_header_t* current = _thread_gc.gc_first;
+//     //     while (current) {
+//     //         xc_header_t* next = current->next_gc;
+//     //         free(current);
+//     //         current = next;
+//     //     }
         
-    //     /* 释放灰色栈 */
-    //     if (_thread_gc.gray_stack) {
-    //         free(_thread_gc.gray_stack);
-    //         _thread_gc.gray_stack = NULL;
-    //     }
+//     //     /* 释放灰色栈 */
+//     //     if (_thread_gc.gray_stack) {
+//     //         free(_thread_gc.gray_stack);
+//     //         _thread_gc.gray_stack = NULL;
+//     //     }
         
-    //     _thread_gc.gc_first = NULL;
-    //     _thread_gc.initialized = 0;
-    // }
-    // */
-}
+//     //     _thread_gc.gc_first = NULL;
+//     //     _thread_gc.initialized = 0;
+//     // }
+//     // */
+// }
 
 /* 将对象标记为灰色并加入灰色栈 */
 // /*
@@ -253,7 +257,6 @@ void xc_gc(void) {
     // _thread_gc.allocation_count = 0;
     // */
     
-    // 使用 xc_gc_context 的 GC 而不是 _thread_gc
     xc_runtime_t *rt = &xc;
     xc_gc_run(rt);
 }
@@ -264,18 +267,19 @@ static xc_gc_context_t *xc_gc_get_context(xc_runtime_t *rt) {
     return gc;
 }
 
-/* Initialize the garbage collector */
-void xc_gc_init(xc_runtime_t *rt, const xc_gc_config_t *config) {
-    // 使用全局变量
-    if (xc_gc_context) {
-        // GC already initialized
+/* Initialize the garbage collector for thread-local context */
+void xc_gc_init_auto(xc_runtime_t *rt, const xc_gc_config_t *config) {
+    // 使用线程本地变量
+    static __thread xc_gc_context_t *gc = NULL;
+    if (gc) {
+        // GC already initialized for this thread
         return;
     }
     
     // 创建 GC 上下文
-    xc_gc_context_t *gc = (xc_gc_context_t *)malloc(sizeof(xc_gc_context_t));
+    gc = (xc_gc_context_t *)malloc(sizeof(xc_gc_context_t));
     if (!gc) {
-        fprintf(stderr, "Failed to allocate GC context\n");
+        fprintf(stderr, "Failed to allocate GC context for thread\n");
         return;
     }
     
@@ -307,7 +311,7 @@ void xc_gc_init(xc_runtime_t *rt, const xc_gc_config_t *config) {
     // 启用 GC
     gc->enabled = true;
     
-    // 保存 GC 上下文
+    // 保存线程本地 GC 上下文
     xc_gc_context = gc;
 }
 
@@ -700,8 +704,7 @@ void xc_release(xc_val obj) {
 /* 分配原始内存并处理GC相关逻辑 */
 //TOD 稍后清除....
 void* xc_gc_allocate_raw_memory(size_t size, int type_id) {
-    // xc_gc_thread_init_auto();
-    
+    xc_gc_init_auto(&xc, NULL);//TODO config from global one...
     // 分配内存
     void* memory = malloc(size);
     if (!memory) return NULL;

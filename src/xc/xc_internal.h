@@ -48,7 +48,7 @@ typedef struct xc_gc_config xc_gc_config_t;
 typedef struct xc_gc_stats xc_gc_stats_t;
 
 /* 添加全局变量声明 */
-extern void *xc_gc_context;
+// extern void *xc_gc_context;
 extern xc_exception_frame_t *xc_exception_frame;
 
 /* GC function declarations */
@@ -396,11 +396,11 @@ xc_val xc_function_invoke(xc_val func, xc_val this_obj, int argc, xc_val* argv);
 void xc_gc(void);
 
 
-/* Garbage collector color marks for tri-color marking */
-#define XC_GC_WHITE      0   /* Object is not reachable (candidate for collection) */
-#define XC_GC_GRAY       1   /* Object is reachable but its children haven't been scanned */
-#define XC_GC_BLACK      2   /* Object is reachable and its children have been scanned */
-#define XC_GC_PERMANENT  3   /* Object is permanently reachable (never collected) */
+// /* Garbage collector color marks for tri-color marking */
+// #define XC_GC_WHITE      0   /* Object is not reachable (candidate for collection) */
+// #define XC_GC_GRAY       1   /* Object is reachable but its children haven't been scanned */
+// #define XC_GC_BLACK      2   /* Object is reachable and its children have been scanned */
+// #define XC_GC_PERMANENT  3   /* Object is permanently reachable (never collected) */
 
 /* GC configuration structure */
 typedef struct xc_gc_config {
@@ -438,6 +438,7 @@ typedef struct xc_function_t xc_function_t;
 
 /* Internal GC context structure */
 typedef struct xc_gc_context {
+    bool initialized;
     xc_gc_config_t config;           /* GC configuration */
     size_t heap_size;                /* Current heap size in bytes */
     size_t used_memory;              /* Used memory in bytes */
@@ -557,19 +558,7 @@ typedef struct {
 #define XC_OBJECT(header) ((xc_val)((char*)(header) + sizeof(xc_header_t)))
 
 /* 线程本地GC状态 */
-// /*
-// static __thread struct {
-//     void* gc_first;         /* 本线程GC链表头 */
-//     size_t total_memory;    /* 本线程分配的内存总量 */
-//     size_t gc_threshold;    /* 本线程GC阈值 */
-//     char initialized;       /* 线程本地状态是否已初始化 */
-//     void* stack_bottom;     /* 栈底指针 */
-//     size_t gray_count;      /* 灰色对象计数 */
-//     xc_header_t** gray_stack; /* 灰色对象栈 */
-//     size_t gray_capacity;   /* 灰色对象栈容量 */
-//     size_t allocation_count; /* 分配计数，用于触发自动GC */
-// } _thread_gc = {0};
-// */
+static __thread xc_gc_context_t *xc_gc_context = NULL;
 
 void xc_gc_thread_exit(void);
 void xc_gc_thread_init_auto(void);
@@ -609,5 +598,5 @@ static void gc_mark_roots(void);
 static void gc_sweep(void);
 static void gc_mark_gray(xc_header_t* header);
 static void gc_scan_gray(void);
-
+void xc_gc_init_auto(xc_runtime_t *rt, const xc_gc_config_t *config);
 #endif /* XC_INTERNAL_H */
