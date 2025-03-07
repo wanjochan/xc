@@ -75,18 +75,20 @@ static xc_val alloc_object(int type, ...) {
         header->type_name = entry->name;
         header->color = XC_GC_WHITE;
 
-        header->next_gc = _thread_gc.gc_first;
+        // /*
+        // header->next_gc = _thread_gc.gc_first;
         
-        _thread_gc.gc_first = header;
-        _thread_gc.total_memory += header->size;
+        // _thread_gc.gc_first = header;
+        // _thread_gc.total_memory += header->size;
         
-        /* 增加分配计数 */
-        _thread_gc.allocation_count++;
+        // /* 增加分配计数 */
+        // _thread_gc.allocation_count++;
         
-        /* 检查是否需要进行垃圾回收 */
-        if (_thread_gc.allocation_count > 1000 || _thread_gc.total_memory > _thread_gc.gc_threshold) {
-            xc_gc();
-        }
+        // /* 检查是否需要进行垃圾回收 */
+        // if (_thread_gc.allocation_count > 1000 || _thread_gc.total_memory > _thread_gc.gc_threshold) {
+        //     xc_gc();
+        // }
+        // */
     } else {
         // 如果使用的是 xc_gc_allocate_raw_memory，只需设置类型特定的字段
         header->type_name = entry->name;
@@ -804,8 +806,12 @@ xc_object_t *xc_error_get_stack_trace(xc_runtime_t *rt, xc_object_t *error) {
     return (xc_object_t *)stack_array;
 }
 
-/* 按顺序初始化所有基本类型 */
-void xc_types_init(void) {
+/* use GCC FEATURE */
+void __attribute__((constructor)) xc_auto_init(void) {
+    printf("DEBUG xc_auto_init()\n");//TODO log-level
+    // 初始化GC系统
+    xc_gc_init(&xc, NULL);//@see xc_gc.c
+
     xc_register_string_type(&xc);
     xc_register_boolean_type(&xc);
     xc_register_number_type(&xc);
@@ -813,15 +819,6 @@ void xc_types_init(void) {
     xc_register_object_type(&xc);
     xc_register_function_type(&xc);
     xc_register_error_type(&xc);
-}
-
-/* use GCC FEATURE */
-void __attribute__((constructor)) xc_auto_init(void) {
-    printf("DEBUG xc_auto_init()\n");//TODO log-level
-    // 初始化GC系统
-    xc_gc_init(&xc, NULL);//@see xc_gc.c
-    // 初始化类型系统
-    xc_types_init();
 }
 
 void __attribute__((destructor)) xc_auto_shutdown(void) {
@@ -835,8 +832,7 @@ XC_REQUIRES(xc_auto_init);
 XC_REQUIRES(xc_auto_shutdown);
 
 /* 定义全局变量 */
-//TODO 这个是不是应该放在线程上，而不是全局？？？
-
+//全局的 gc
 void *xc_gc_context = NULL;
 xc_type_lifecycle_t *xc_type_handlers[256] = {0};
 xc_exception_frame_t *xc_exception_frame = NULL;

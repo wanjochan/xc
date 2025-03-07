@@ -557,17 +557,19 @@ typedef struct {
 #define XC_OBJECT(header) ((xc_val)((char*)(header) + sizeof(xc_header_t)))
 
 /* 线程本地GC状态 */
-static __thread struct {
-    void* gc_first;         /* 本线程GC链表头 */
-    size_t total_memory;    /* 本线程分配的内存总量 */
-    size_t gc_threshold;    /* 本线程GC阈值 */
-    char initialized;       /* 线程本地状态是否已初始化 */
-    void* stack_bottom;     /* 栈底指针 */
-    size_t gray_count;      /* 灰色对象计数 */
-    xc_header_t** gray_stack; /* 灰色对象栈 */
-    size_t gray_capacity;   /* 灰色对象栈容量 */
-    size_t allocation_count; /* 分配计数，用于触发自动GC */
-} _thread_gc = {0};
+// /*
+// static __thread struct {
+//     void* gc_first;         /* 本线程GC链表头 */
+//     size_t total_memory;    /* 本线程分配的内存总量 */
+//     size_t gc_threshold;    /* 本线程GC阈值 */
+//     char initialized;       /* 线程本地状态是否已初始化 */
+//     void* stack_bottom;     /* 栈底指针 */
+//     size_t gray_count;      /* 灰色对象计数 */
+//     xc_header_t** gray_stack; /* 灰色对象栈 */
+//     size_t gray_capacity;   /* 灰色对象栈容量 */
+//     size_t allocation_count; /* 分配计数，用于触发自动GC */
+// } _thread_gc = {0};
+// */
 
 void xc_gc_thread_exit(void);
 void xc_gc_thread_init_auto(void);
