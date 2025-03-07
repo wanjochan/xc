@@ -51,29 +51,40 @@ int main(int argc, char* argv[]) {
     /* Register test suites */
     register_test_suites();
     
-    /* Run type system tests */
-    // test_xc_types(); // Commented out due to undefined reference
+    /* 
+     * 按照从浅到深的顺序执行测试:
+     * 1. 运行时接口测试
+     * 2. 基础类型测试 (null, boolean, number, string)
+     * 3. 异常处理测试
+     * 4. 对象测试
+     * 5. 数组测试
+     */
     
-    /* Run garbage collection tests */
-    // test_xc_gc(); // Commented out due to undefined reference
+    /* 1. 运行时接口测试 */
+    printf("\n===== 1. 运行时接口测试 =====\n");
+    test_run_category("core");
     
-    /* Run exception handling tests */
+    /* 2. 基础类型测试 */
+    printf("\n===== 2. 基础类型测试 =====\n");
+    test_xc_types();
+    
+    /* 3. 异常处理测试 */
+    printf("\n===== 3. 异常处理测试 =====\n");
     test_xc_exception();
     
-    /* Register and run composite type tests */
-    // register_composite_type_tests(); // Commented out due to undefined reference
+    /* 4. 对象测试 */
+    printf("\n===== 4. 对象测试 =====\n");
+    register_object_tests();
+    test_run_category("object");
     
-    /* Register object tests */
-    // register_object_tests(); // Commented out due to undefined reference
+    /* 5. 数组测试 */
+    printf("\n===== 5. 数组测试 =====\n");
+    run_array_tests();
     
-    /* Register standard library tests */
-    // register_stdc_tests(); // Commented out due to undefined reference
-    
-    /* Run array tests */
-    // run_array_tests();  // 暂时注释掉，需要重写数组测试以使用公共API
-    
-    /* Run all registered tests */
-    test_run_all();
+    /* 其他测试暂时注释掉 */
+    // test_xc_gc(); // 垃圾回收测试
+    // register_composite_type_tests(); // 复合类型测试
+    // register_stdc_tests(); // 标准库测试
     
     /* Show test summary */
     test_summary();

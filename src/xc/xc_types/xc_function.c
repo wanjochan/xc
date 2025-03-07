@@ -77,36 +77,32 @@ static xc_type_t function_type = {
 
 /* Register function type */
 void xc_register_function_type(xc_runtime_t *rt) {
-    /* 定义类型生命周期管理接口 */
-    static xc_type_lifecycle_t lifecycle = {
-        .initializer = NULL,
-        .cleaner = NULL,
-        .creator = NULL,  /* Function has its own creation functions */
-        .destroyer = (xc_destroy_func)function_free,
-        .marker = (xc_marker_func)function_mark,
-        .allocator = NULL
-    };
+    // 初始化 function 类型
+    function_type.name = "function";
+    function_type.flags = XC_TYPE_FUNC;
+    function_type.free = function_free;
+    function_type.mark = function_mark;
+    function_type.equal = function_equal;
+    function_type.compare = function_compare;
     
-    /* 注册类型 */
-    int type_id = xc_register_type("function", &lifecycle);
-    XC_RUNTIME_EXT(rt)->function_type = &function_type;
+    // 注册类型
+    xc_function_type = &function_type;
 }
 
 /* Create function object */
 xc_object_t *xc_function_create(xc_runtime_t *rt, xc_function_ptr_t fn, xc_object_t *closure) {
-    /* 使用 xc_gc_alloc 分配对象，并传递类型索引 */
+    // 分配内存
     xc_function_t *obj = (xc_function_t *)xc_gc_alloc(rt, sizeof(xc_function_t), XC_TYPE_FUNC);
     if (!obj) {
         return NULL;
     }
     
-    /* 设置正确的类型指针 */
-    ((xc_object_t *)obj)->type = XC_RUNTIME_EXT(rt)->function_type;
-
+    // 初始化对象
+    ((xc_object_t *)obj)->type = xc_function_type;
     obj->handler = fn;
+    obj->closure = closure;
     obj->this_obj = NULL;
-    obj->closure = closure;  /* Initialize closure with the provided value */
-
+    
     return (xc_object_t *)obj;
 }
 
@@ -148,7 +144,7 @@ xc_object_t *xc_function_call(xc_runtime_t *rt, xc_object_t *func, xc_object_t *
 
 /* Type checking */
 bool xc_is_function(xc_runtime_t *rt, xc_object_t *obj) {
-    return obj && obj->type == XC_RUNTIME_EXT(rt)->function_type;
+    return obj && obj->type == xc_function_type;
 }
 
 /* Access closure */

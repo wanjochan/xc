@@ -57,39 +57,41 @@ static xc_type_t string_type = {
     .compare = string_compare
 };
 
+/* String creator function for use with create() */
+static xc_val string_creator(int type, va_list args) {
+    /* 从可变参数中获取字符串 */
+    const char *value = va_arg(args, const char *);
+    
+    /* 调用实际的创建函数 */
+    return (xc_val)xc_string_create(NULL, value);
+}
+
 /* Register string type */
 void xc_register_string_type(xc_runtime_t *rt) {
-    /* 定义类型生命周期管理接口 */
-    static xc_type_lifecycle_t lifecycle = {
-        .initializer = NULL,
-        .cleaner = NULL,
-        .creator = NULL,  /* String has its own creation functions */
-        .destroyer = (xc_destroy_func)string_free,
-        .marker = (xc_marker_func)string_mark,
-        .allocator = NULL
-    };
+    // 初始化 string 类型
+    string_type.name = "string";
+    string_type.flags = XC_TYPE_STRING;
+    string_type.free = string_free;
+    string_type.mark = NULL;  // 字符串不包含其他对象引用
+    string_type.equal = string_equal;
+    string_type.compare = string_compare;
     
-    /* 注册类型 */
-    int type_id = xc_register_type("string", &lifecycle);
-    XC_RUNTIME_EXT(rt)->string_type = &string_type;
+    // 注册类型
+    xc_string_type = &string_type;
 }
 
 /* Internal helper functions */
 static xc_object_t *string_alloc(xc_runtime_t *rt, const char *str, size_t len) {
     /* 使用 xc_gc_alloc 分配对象，并传递类型索引 */
-    xc_string_t *obj = (xc_string_t *)xc_gc_alloc(rt, sizeof(xc_string_t), XC_TYPE_STRING);
+    xc_string_t *obj = (xc_string_t *)xc_gc_alloc(rt, sizeof(xc_string_t) + len + 1, XC_TYPE_STRING);
     if (!obj) {
         return NULL;
     }
     
     /* 设置正确的类型指针 */
-    ((xc_object_t *)obj)->type = XC_RUNTIME_EXT(rt)->string_type;
+    ((xc_object_t *)obj)->type = xc_string_type;
 
-    obj->data = malloc(len + 1);
-    if (!obj->data) {
-        xc_gc_free(rt, (xc_object_t *)obj);
-        return NULL;
-    }
+    obj->length = len;
 
     if (str) {
         memcpy(obj->data, str, len);
@@ -97,27 +99,23 @@ static xc_object_t *string_alloc(xc_runtime_t *rt, const char *str, size_t len) 
         memset(obj->data, 0, len);
     }
     obj->data[len] = '\0';
-    obj->length = len;
 
     return (xc_object_t *)obj;
 }
 
-/* Create string object */
-xc_object_t *xc_string_create(xc_runtime_t *rt, const char *value) {
-    if (!value) {
-        value = "";
-    }
-    return string_alloc(rt, value, strlen(value));
-}
-
-/* Create string object with length */
+/* Create string object with specified length */
 xc_object_t *xc_string_create_len(xc_runtime_t *rt, const char *value, size_t len) {
     return string_alloc(rt, value, len);
 }
 
+/* Create string object */
+xc_object_t *xc_string_create(xc_runtime_t *rt, const char *value) {
+    return xc_string_create_len(rt, value, value ? strlen(value) : 0);
+}
+
 /* Type checking */
 bool xc_is_string(xc_runtime_t *rt, xc_object_t *obj) {
-    return obj && obj->type == XC_RUNTIME_EXT(rt)->string_type;
+    return obj && obj->type == xc_string_type;
 }
 
 /* Value access */
@@ -127,10 +125,57 @@ const char *xc_string_value(xc_runtime_t *rt, xc_object_t *obj) {
     return str->data;
 }
 
+/* Length access */
 size_t xc_string_length(xc_runtime_t *rt, xc_object_t *obj) {
     assert(xc_is_string(rt, obj));
     xc_string_t *str = (xc_string_t *)obj;
     return str->length;
+}
+
+/* String operations */
+xc_object_t *xc_string_concat(xc_runtime_t *rt, xc_object_t *a, xc_object_t *b) {
+    assert(xc_is_string(rt, a));
+    
+    const char *str_a = xc_string_value(rt, a);
+    size_t len_a = xc_string_length(rt, a);
+    
+    /* Convert b to string if needed */
+    char temp[64];
+    const char *str_b;
+    size_t len_b;
+    
+    if (xc_is_string(rt, b)) {
+        str_b = xc_string_value(rt, b);
+        len_b = xc_string_length(rt, b);
+    } else if (xc_is_number(rt, b)) {
+        double num = xc_number_value(rt, b);
+        snprintf(temp, sizeof(temp), "%g", num);
+        str_b = temp;
+        len_b = strlen(temp);
+    } else if (xc_is_boolean(rt, b)) {
+        bool val = xc_boolean_value(rt, b);
+        str_b = val ? "true" : "false";
+        len_b = val ? 4 : 5;
+    } else if (xc_is_null(rt, b)) {
+        str_b = "null";
+        len_b = 4;
+    } else {
+        str_b = "[object]";
+        len_b = 8;
+    }
+    
+    /* Allocate new string with combined length */
+    xc_string_t *result = (xc_string_t *)string_alloc(rt, NULL, len_a + len_b);
+    if (!result) {
+        return NULL;
+    }
+    
+    /* Copy both strings */
+    memcpy(result->data, str_a, len_a);
+    memcpy(result->data + len_a, str_b, len_b);
+    result->data[len_a + len_b] = '\0';
+    
+    return (xc_object_t *)result;
 }
 
 /* Type conversion */

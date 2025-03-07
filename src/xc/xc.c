@@ -829,18 +829,14 @@ static xc_val invoke(xc_val func, int argc, ...) {
 static int is(xc_val val, int type) {
     if (!val) return type == XC_TYPE_NULL;
     
-    // 获取对象的类型ID
-    int obj_type = XC_HEADER(val)->type;
+    xc_object_t *obj = (xc_object_t *)val;
+    int obj_type = obj->type ? obj->type->flags : XC_TYPE_UNKNOWN;
     
-    // 对于数组类型，特殊处理
     if (type == XC_TYPE_ARRAY) {
-        // 如果对象的类型ID是XC_TYPE_ARRAY，或者对象的类型指针是array_type，则返回true
-        xc_runtime_t *rt = &xc;
-        xc_object_t *obj = (xc_object_t *)val;
-        return obj_type == XC_TYPE_ARRAY || (obj && obj->type == XC_RUNTIME_EXT(rt)->array_type);
+        // 修改这里，使用全局变量
+        return obj_type == XC_TYPE_ARRAY || (obj && obj->type == xc_array_type);
     }
     
-    // 对于其他类型，直接比较类型ID
     return obj_type == type;
 }
 
@@ -1061,6 +1057,22 @@ void __attribute__((destructor)) xc_auto_shutdown(void) {
 XC_REQUIRES(xc_auto_init);
 XC_REQUIRES(xc_auto_shutdown);
 
+/* 定义全局变量 */
+void *xc_gc_context = NULL;
+xc_type_t *xc_type_handlers[256] = {0};
+xc_exception_frame_t *xc_exception_frame = NULL;
+
+/* 内置类型的全局变量定义 */
+xc_type_t *xc_null_type = NULL;
+xc_type_t *xc_boolean_type = NULL;
+xc_type_t *xc_number_type = NULL;
+xc_type_t *xc_string_type = NULL;
+xc_type_t *xc_array_type = NULL;
+xc_type_t *xc_object_type = NULL;
+xc_type_t *xc_function_type = NULL;
+xc_type_t *xc_error_type = NULL;
+
+/* 全局运行时对象 */
 xc_runtime_t xc = {
     .alloc_object = alloc_object,
     .type_of = type_of,
@@ -1078,10 +1090,6 @@ xc_runtime_t xc = {
     .set_uncaught_exception_handler = set_uncaught_exception_handler,
     .get_current_error = get_current_error,
     .clear_error = clear_error,
-    //.gc = xc_gc,
-    //.gc_force = xc_gc,
-    // .init = xc_auto_init,
-    // .shutdown = xc_auto_shutdown
 };
 
 /* 添加栈帧 */
@@ -1192,73 +1200,84 @@ bool xc_strict_equal(xc_runtime_t *rt, xc_object_t *a, xc_object_t *b) {
  * The real implementation would be in xc_function.c
  */
 xc_val xc_function_invoke(xc_val func, xc_val this_obj, int argc, xc_val* argv) {
-    /* This is a stub implementation */
+    if (!func) return NULL;
+    xc_function_t *func_obj = (xc_function_t *)func;
+    if (func_obj->handler) {
+        return func_obj->handler(&xc, this_obj, argc, argv);
+    }
     return NULL;
 }
 
 /* Get GC context from runtime */
 static xc_gc_context_t *xc_gc_get_context(xc_runtime_t *rt) {
-    xc_runtime_extended_t *ext_rt = (xc_runtime_extended_t *)rt;
-    return (xc_gc_context_t *)ext_rt->gc_context;
+    xc_gc_context_t *gc = (xc_gc_context_t *)xc_gc_context;
+    return gc;
 }
 
 /* Initialize the garbage collector */
 void xc_gc_init(xc_runtime_t *rt, const xc_gc_config_t *config) {
-    xc_runtime_extended_t *ext_rt = (xc_runtime_extended_t *)rt;
+    // 使用全局变量
+    if (xc_gc_context) {
+        // GC already initialized
+        return;
+    }
     
-    /* Allocate and initialize GC context */
+    // 创建 GC 上下文
     xc_gc_context_t *gc = (xc_gc_context_t *)malloc(sizeof(xc_gc_context_t));
     if (!gc) {
         fprintf(stderr, "Failed to allocate GC context\n");
-        exit(1);
+        return;
     }
     
-    /* Copy configuration or use defaults */
+    // 初始化 GC 上下文
+    memset(gc, 0, sizeof(xc_gc_context_t));
+    
+    // 设置配置
     if (config) {
-        memcpy(&gc->config, config, sizeof(xc_gc_config_t));
+        gc->config = *config;
     } else {
-        xc_gc_config_t default_config = XC_GC_DEFAULT_CONFIG;
-        memcpy(&gc->config, &default_config, sizeof(xc_gc_config_t));
+        // 默认配置
+        gc->config.initial_heap_size = 1024 * 1024; // 1MB
+        gc->config.max_heap_size = 1024 * 1024 * 1024; // 1GB
+        gc->config.growth_factor = 1.5;
+        gc->config.gc_threshold = 0.75;
+        gc->config.max_alloc_before_gc = 10000;
     }
     
-    /* Initialize context fields */
-    gc->heap_size = 0;
-    gc->used_memory = 0;
-    gc->allocation_count = 0;
-    gc->total_allocated = 0;
-    gc->total_freed = 0;
-    gc->gc_cycles = 0;
-    gc->total_pause_time_ms = 0;
-    gc->enabled = true;
-    
-    /* Initialize root set */
+    // 初始化根集合
     gc->roots = NULL;
     gc->root_count = 0;
     gc->root_capacity = 0;
     
-    /* Initialize object lists */
+    // 初始化对象列表
     gc->white_list = NULL;
     gc->gray_list = NULL;
     gc->black_list = NULL;
     
-    /* Store context in runtime */
-    ext_rt->gc_context = gc;
+    // 启用 GC
+    gc->enabled = true;
+    
+    // 保存 GC 上下文
+    xc_gc_context = gc;
 }
 
 /* Shutdown the garbage collector */
 void xc_gc_shutdown(xc_runtime_t *rt) {
-    xc_runtime_extended_t *ext_rt = (xc_runtime_extended_t *)rt;
-    xc_gc_context_t *gc = xc_gc_get_context(rt);
+    // 使用全局变量
+    xc_gc_context_t *gc = (xc_gc_context_t *)xc_gc_context;
+    if (!gc) {
+        return;
+    }
     
-    /* Run a final GC to free all objects */
-    xc_gc_run(rt);
+    // 释放根集合
+    if (gc->roots) {
+        free(gc->roots);
+        gc->roots = NULL;
+    }
     
-    /* Free roots array */
-    free(gc->roots);
-    
-    /* Free GC context */
+    // 释放 GC 上下文
     free(gc);
-    ext_rt->gc_context = NULL;
+    xc_gc_context = NULL;
 }
 
 /* Mark phase of GC - traverse object and mark all reachable objects */
@@ -1272,14 +1291,14 @@ void xc_gc_mark(xc_runtime_t *rt, xc_object_t *obj) {
     obj->gc_color = XC_GC_GRAY;
     
     /* Add to gray list for processing */
-    xc_gc_context_t *gc = xc_gc_get_context(rt);
+    xc_gc_context_t *gc = (xc_gc_context_t *)xc_gc_context;
     obj->gc_next = gc->gray_list;
     gc->gray_list = obj;
 }
 
 /* Process gray list and mark all reachable objects */
 static void xc_gc_process_gray_list(xc_runtime_t *rt) {
-    xc_gc_context_t *gc = xc_gc_get_context(rt);
+    xc_gc_context_t *gc = (xc_gc_context_t *)xc_gc_context;
     
     /* Process all objects in the gray list */
     while (gc->gray_list) {
@@ -1294,47 +1313,9 @@ static void xc_gc_process_gray_list(xc_runtime_t *rt) {
         obj->gc_next = gc->black_list;
         gc->black_list = obj;
         
-        /* Get extended runtime */
-        xc_runtime_extended_t *ext_rt = (xc_runtime_extended_t *)rt;
-
         /* Call type-specific mark function if provided */
         if (obj->type && obj->type->mark) {
             obj->type->mark(rt, obj);
-        } else {
-            /* Default marking behavior for objects without type-specific mark function */
-            if (obj->type == ext_rt->array_type) {
-                /* Mark array elements */
-                xc_array_t *arr = (xc_array_t *)obj;
-                for (size_t i = 0; i < arr->length; i++) {
-                    if (arr->items[i]) {
-                        xc_gc_mark(rt, arr->items[i]);
-                    }
-                }
-            } else if (obj->type == ext_rt->object_type) {
-                /* Mark object properties */
-                xc_object_data_t *object = (xc_object_data_t *)obj;
-                for (size_t i = 0; i < object->count; i++) {
-                    if (object->properties[i].key) {
-                        xc_gc_mark(rt, object->properties[i].key);
-                    }
-                    if (object->properties[i].value) {
-                        xc_gc_mark(rt, object->properties[i].value);
-                    }
-                }
-                /* Mark prototype */
-                if (object->prototype) {
-                    xc_gc_mark(rt, object->prototype);
-                }
-            } else if (obj->type == ext_rt->function_type) {
-                /* Mark function's closure variables */
-                xc_function_t *func = (xc_function_t *)obj;
-                if (func->closure) {
-                    xc_gc_mark(rt, func->closure);
-                }
-                if (func->this_obj) {
-                    xc_gc_mark(rt, func->this_obj);
-                }
-            }
         }
     }
 }
@@ -1475,61 +1456,46 @@ void xc_gc_run(xc_runtime_t *rt) {
 
 /* Allocate a new object */
 xc_object_t *xc_gc_alloc(xc_runtime_t *rt, size_t size, int type_id) {
-    xc_gc_context_t *gc = xc_gc_get_context(rt);
-    xc_runtime_extended_t *ext_rt = (xc_runtime_extended_t *)rt;
+    // 使用全局变量
+    xc_gc_context_t *gc = (xc_gc_context_t *)xc_gc_context;
+    if (!gc) {
+        fprintf(stderr, "GC not initialized\n");
+        return NULL;
+    }
     
-    /* Check if we need to run GC */
+    // 检查是否需要运行 GC
     gc->allocation_count++;
     if (gc->enabled && 
         (gc->allocation_count >= gc->config.max_alloc_before_gc ||
-         gc->used_memory >= gc->config.gc_threshold * gc->heap_size)) {
+         gc->used_memory >= gc->heap_size * gc->config.gc_threshold)) {
         xc_gc_run(rt);
     }
     
-    /* 为对象头和对象本身分配内存 */
-    size_t total_size = size + sizeof(xc_header_t);
-    char *mem = (char *)malloc(total_size);
-    if (!mem) {
-        /* If allocation fails, run GC and try again */
-        if (gc->enabled) {
-            xc_gc_run(rt);
-            mem = (char *)malloc(total_size);
-            if (!mem) {
-                /* If still fails, return NULL */
-                return NULL;
-            }
-        } else {
-            return NULL;
-        }
+    // 分配内存
+    xc_object_t *obj = (xc_object_t *)malloc(size);
+    if (!obj) {
+        fprintf(stderr, "Failed to allocate object of size %zu\n", size);
+        return NULL;
     }
     
-    /* 初始化对象头 */
-    xc_header_t *header = (xc_header_t *)mem;
-    memset(header, 0, sizeof(xc_header_t));
-    header->type = type_id;
-    header->size = total_size;
-    header->ref_count = 1;
-    header->color = XC_GC_WHITE;
-    header->type_name = ext_rt->type_handlers[type_id] ? ext_rt->type_handlers[type_id]->name : "unknown";
-    
-    /* 获取对象指针 */
-    xc_object_t *obj = (xc_object_t *)(mem + sizeof(xc_header_t));
-    
-    /* 初始化对象 */
+    // 初始化对象
     memset(obj, 0, size);
     obj->size = size;
-    obj->ref_count = 1;  /* Start with ref count 1 */
+    obj->ref_count = 1;
     obj->gc_color = XC_GC_WHITE;
-    obj->type = ext_rt->type_handlers[type_id];
     
-    /* Add to white list */
+    // 设置类型
+    if (type_id >= 0 && type_id < 256) {
+        obj->type = xc_type_handlers[type_id];
+    }
+    
+    // 更新统计信息
+    gc->used_memory += size;
+    gc->total_allocated++;
+    
+    // 添加到白色列表
     obj->gc_next = gc->white_list;
     gc->white_list = obj;
-    
-    /* Update statistics */
-    gc->heap_size += total_size;
-    gc->used_memory += total_size;
-    gc->total_allocated++;
     
     return obj;
 }

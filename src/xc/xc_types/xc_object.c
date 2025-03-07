@@ -149,7 +149,7 @@ void xc_register_object_type(xc_runtime_t *rt) {
     
     /* 注册类型 */
     int type_id = xc_register_type("object", &lifecycle);
-    XC_RUNTIME_EXT(rt)->object_type = &object_type;
+    xc_object_type = &object_type;
 }
 
 /* Create object */
@@ -161,7 +161,7 @@ xc_object_t *xc_object_create(xc_runtime_t *rt) {
     }
     
     /* 设置正确的类型指针 */
-    ((xc_object_t *)obj)->type = XC_RUNTIME_EXT(rt)->object_type;
+    ((xc_object_t *)obj)->type = xc_object_type;
 
     obj->properties = NULL;
     obj->count = 0;
@@ -265,7 +265,7 @@ void xc_object_delete(xc_runtime_t *rt, xc_object_t *obj, const char *key) {
 
 /* Type checking */
 bool xc_is_object(xc_runtime_t *rt, xc_object_t *obj) {
-    return obj && obj->type == XC_RUNTIME_EXT(rt)->object_type;
+    return obj && obj->type == xc_object_type;
 }
 
 /* Prototype operations */

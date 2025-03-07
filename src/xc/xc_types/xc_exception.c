@@ -2,6 +2,9 @@
 // #include "../xc_gc.h"  // Removed since we've merged it into xc.c
 #include "../xc_internal.h"
 
+/* Error type descriptor */
+static xc_type_t error_type = {0};
+
 /* Create a stack trace entry */
 static xc_stack_trace_entry_t xc_stack_trace_entry_create(const char *function, const char *file, int line) {
     xc_stack_trace_entry_t entry;
@@ -59,16 +62,34 @@ static void xc_stack_trace_free(xc_stack_trace_t *stack_trace) {
 
 /* Capture the current stack trace */
 xc_stack_trace_t *xc_stack_trace_capture(xc_runtime_t *rt) {
-    xc_runtime_extended_t *ext_rt = (xc_runtime_extended_t *)rt;
+    xc_exception_frame_t *frame = xc_exception_frame;
     
-    /* Create a new stack trace */
-    xc_stack_trace_t *trace = xc_stack_trace_create(rt);
-    if (!trace) return NULL;
+    xc_stack_trace_t *trace = (xc_stack_trace_t *)malloc(sizeof(xc_stack_trace_t));
+    if (!trace) {
+        return NULL;
+    }
     
-    /* Walk the exception frames to build the stack trace */
-    xc_exception_frame_t *frame = ext_rt->exception_frame;
+    trace->entries = NULL;
+    trace->count = 0;
+    trace->capacity = 0;
+    
     while (frame) {
-        xc_stack_trace_add_entry(trace, "unknown", frame->file, frame->line);
+        if (trace->count >= trace->capacity) {
+            size_t new_capacity = trace->capacity == 0 ? 8 : trace->capacity * 2;
+            xc_stack_trace_entry_t *new_entries = (xc_stack_trace_entry_t *)realloc(
+                trace->entries, new_capacity * sizeof(xc_stack_trace_entry_t));
+            if (!new_entries) {
+                return trace;
+            }
+            trace->entries = new_entries;
+            trace->capacity = new_capacity;
+        }
+        
+        trace->entries[trace->count].function = frame->file;
+        trace->entries[trace->count].file = frame->file;
+        trace->entries[trace->count].line = frame->line;
+        trace->count++;
+        
         frame = frame->prev;
     }
     
@@ -92,8 +113,7 @@ static xc_exception_t *xc_exception_create_internal(xc_runtime_t *rt, int type, 
 
 /* Initialize the exception handling system */
 void xc_exception_init(xc_runtime_t *rt) {
-    xc_runtime_extended_t *ext_rt = (xc_runtime_extended_t *)rt;
-    ext_rt->exception_frame = NULL;
+    xc_exception_frame = NULL;
     
     /* Register the error type */
     xc_register_error_type(rt);
@@ -116,46 +136,44 @@ xc_object_t *xc_exception_create_with_cause(xc_runtime_t *rt, int type, const ch
 
 /* Throw an exception */
 void xc_exception_throw(xc_runtime_t *rt, xc_object_t *exception) {
-    xc_runtime_extended_t *ext_rt = (xc_runtime_extended_t *)rt;
-    
-    /* If there's no exception frame, handle uncaught exception */
-    if (!ext_rt->exception_frame) {
+    if (!xc_exception_frame) {
         fprintf(stderr, "Uncaught exception: ");
         /* Print exception details */
         // ...
         exit(1);
     }
     
-    /* Store the exception in the current frame */
-    ext_rt->exception_frame->exception = exception;
+    xc_exception_frame->exception = exception;
     
-    /* Jump back to the try point */
-    longjmp(ext_rt->exception_frame->jmp, 1);
+    longjmp(xc_exception_frame->jmp, 1);
 }
 
 /* Get exception type */
 int xc_exception_get_type(xc_runtime_t *rt, xc_object_t *exception) {
-    if (!exception || exception->type != ((xc_runtime_extended_t *)rt)->error_type) return -1;
-    return ((xc_exception_t *)exception)->type;
+    if (!exception || exception->type != xc_error_type) return -1;
+    xc_exception_t *exc = (xc_exception_t *)exception;
+    return exc->type;
 }
 
 /* Get exception message */
 const char *xc_exception_get_message(xc_runtime_t *rt, xc_object_t *exception) {
-    if (!exception || exception->type != ((xc_runtime_extended_t *)rt)->error_type) return "Not an exception";
-    xc_exception_t *e = (xc_exception_t *)exception;
-    return e->message ? e->message : "No message";
+    if (!exception || exception->type != xc_error_type) return "Not an exception";
+    xc_exception_t *exc = (xc_exception_t *)exception;
+    return exc->message;
 }
 
 /* Get exception cause */
 xc_object_t *xc_exception_get_cause(xc_runtime_t *rt, xc_object_t *exception) {
-    if (!exception || exception->type != ((xc_runtime_extended_t *)rt)->error_type) return NULL;
-    return (xc_object_t *)((xc_exception_t *)exception)->cause;
+    if (!exception || exception->type != xc_error_type) return NULL;
+    xc_exception_t *exc = (xc_exception_t *)exception;
+    return (xc_object_t *)exc->cause;
 }
 
 /* Get exception stack trace */
 xc_stack_trace_t *xc_exception_get_stack_trace(xc_runtime_t *rt, xc_object_t *exception) {
-    if (!exception || exception->type != ((xc_runtime_extended_t *)rt)->error_type) return NULL;
-    return ((xc_exception_t *)exception)->stack_trace;
+    if (!exception || exception->type != xc_error_type) return NULL;
+    xc_exception_t *exc = (xc_exception_t *)exception;
+    return exc->stack_trace;
 }
 
 /* Print stack trace */
@@ -206,27 +224,21 @@ char *xc_stack_trace_to_string(xc_runtime_t *rt, xc_stack_trace_t *stack_trace) 
 
 /* Rethrow the current exception */
 void xc_exception_rethrow(xc_runtime_t *rt) {
-    xc_runtime_extended_t *ext_rt = (xc_runtime_extended_t *)rt;
-    
-    /* Check if there's an exception to rethrow */
-    if (!ext_rt->exception_frame || !ext_rt->exception_frame->exception) {
-        fprintf(stderr, "Attempt to rethrow when no exception is active\n");
-        exit(1);
+    if (!xc_exception_frame || !xc_exception_frame->exception) {
+        fprintf(stderr, "No current exception to rethrow\n");
+        return;
     }
     
-    /* Get the current exception */
-    xc_object_t *exception = ext_rt->exception_frame->exception;
-    ext_rt->exception_frame->exception = NULL;
+    xc_object_t *exception = xc_exception_frame->exception;
+    xc_exception_frame->exception = NULL;
     
-    /* Throw it again */
     xc_exception_throw(rt, exception);
 }
 
 /* Clear the current exception */
 void xc_exception_clear(xc_runtime_t *rt) {
-    xc_runtime_extended_t *ext_rt = (xc_runtime_extended_t *)rt;
-    if (ext_rt->exception_frame) {
-        ext_rt->exception_frame->exception = NULL;
+    if (xc_exception_frame) {
+        xc_exception_frame->exception = NULL;
     }
 }
 
@@ -267,42 +279,45 @@ xc_object_t *xc_exception_create_internal_error(xc_runtime_t *rt, const char *me
 
 /* Error type handler - free function */
 static void xc_error_free(xc_runtime_t *rt, xc_object_t *obj) {
-    if (!obj || obj->type != ((xc_runtime_extended_t *)rt)->error_type) return;
+    if (!obj || obj->type != xc_error_type) return;
     
-    xc_exception_t *e = (xc_exception_t *)obj;
+    xc_exception_t *error = (xc_exception_t *)obj;
     
     /* Free the message */
-    if (e->message) {
-        free(e->message);
+    if (error->message) {
+        free(error->message);
     }
     
     /* Free the stack trace */
-    if (e->stack_trace) {
-        xc_stack_trace_free(e->stack_trace);
+    if (error->stack_trace) {
+        if (error->stack_trace->entries) {
+            free(error->stack_trace->entries);
+        }
+        free(error->stack_trace);
     }
 }
 
 /* Error type handler - mark function */
 static void xc_error_mark(xc_runtime_t *rt, xc_object_t *obj) {
-    if (!obj || obj->type != ((xc_runtime_extended_t *)rt)->error_type) return;
+    if (!obj || obj->type != xc_error_type) return;
     
-    xc_exception_t *e = (xc_exception_t *)obj;
+    xc_exception_t *error = (xc_exception_t *)obj;
     
     /* Mark the cause exception */
-    if (e->cause) {
-        // Function to mark an object in GC would be called here
+    if (error->cause) {
+        xc_gc_mark(rt, (xc_object_t *)error->cause);
     }
 }
 
 /* Error type handler - to string function */
 static xc_object_t *xc_error_to_string(xc_runtime_t *rt, xc_object_t *obj) {
-    if (!obj || obj->type != ((xc_runtime_extended_t *)rt)->error_type) return NULL;
+    if (!obj || obj->type != xc_error_type) return NULL;
     
-    xc_exception_t *e = (xc_exception_t *)obj;
+    xc_exception_t *error = (xc_exception_t *)obj;
     
     /* Build a string representation */
     const char *type_str = "Error";
-    switch (e->type) {
+    switch (error->type) {
         case XC_EXCEPTION_TYPE_SYNTAX:    type_str = "SyntaxError"; break;
         case XC_EXCEPTION_TYPE_TYPE:      type_str = "TypeError"; break;
         case XC_EXCEPTION_TYPE_REFERENCE: type_str = "ReferenceError"; break;
@@ -311,7 +326,7 @@ static xc_object_t *xc_error_to_string(xc_runtime_t *rt, xc_object_t *obj) {
         case XC_EXCEPTION_TYPE_INTERNAL:  type_str = "InternalError"; break;
     }
     
-    const char *message = e->message ? e->message : "No message";
+    const char *message = error->message ? error->message : "No message";
     
     /* Allocate string buffer */
     size_t len = strlen(type_str) + 2 + strlen(message) + 1;
@@ -327,35 +342,19 @@ static xc_object_t *xc_error_to_string(xc_runtime_t *rt, xc_object_t *obj) {
     return str_obj;
 }
 
-/* Register the error type */
+/* Register error type */
 void xc_register_error_type(xc_runtime_t *rt) {
-    /* 定义类型生命周期管理接口 */
-    static xc_type_lifecycle_t lifecycle = {
-        .initializer = NULL,
-        .cleaner = NULL,
-        .creator = NULL,  /* Error has its own creation functions */
-        .destroyer = (xc_destroy_func)xc_error_free,
-        .marker = (xc_marker_func)xc_error_mark,
-        .allocator = NULL
-    };
+    // 如果已经注册，直接返回
+    if (xc_error_type) return;
     
-    xc_runtime_extended_t *ext_rt = (xc_runtime_extended_t *)rt;
+    // 初始化错误类型
+    error_type.name = "error";
+    error_type.flags = XC_TYPE_EXCEPTION;
+    error_type.free = xc_error_free;
+    error_type.mark = xc_error_mark;
+    error_type.equal = NULL;  // 错误对象不支持相等比较
+    error_type.compare = NULL;  // 错误对象不支持排序比较
     
-    /* Check if we already have an error type */
-    if (ext_rt->error_type) return;
-    
-    /* 注册类型 */
-    int type_id = xc_register_type("error", &lifecycle);
-    
-    /* Create error type descriptor */
-    static xc_type_t error_type = {
-        .name = "error",
-        .flags = XC_TYPE_EXCEPTION,
-        .mark = xc_error_mark,
-        .free = xc_error_free,
-        .equal = NULL,  /* Use default equality */
-        .compare = NULL  /* Use default comparison */
-    };
-    
-    ext_rt->error_type = &error_type;
+    // 注册类型
+    xc_error_type = &error_type;
 }

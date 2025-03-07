@@ -56,41 +56,47 @@ static xc_type_t boolean_type = {
     .compare = boolean_compare
 };
 
+/* Boolean creator function for use with create() */
+static xc_val boolean_creator(int type, va_list args) {
+    /* 从可变参数中获取布尔值 */
+    bool value = va_arg(args, int); /* bool在可变参数中被提升为int */
+    
+    /* 调用实际的创建函数 */
+    return (xc_val)xc_boolean_create(NULL, value);
+}
+
 /* Register boolean type */
 void xc_register_boolean_type(xc_runtime_t *rt) {
-    /* 定义类型生命周期管理接口 */
-    static xc_type_lifecycle_t lifecycle = {
-        .initializer = NULL,
-        .cleaner = NULL,
-        .creator = NULL,  /* Boolean has its own creation functions */
-        .destroyer = (xc_destroy_func)boolean_free,
-        .marker = (xc_marker_func)boolean_mark,
-        .allocator = NULL
-    };
+    // 初始化 boolean 类型
+    boolean_type.name = "boolean";
+    boolean_type.flags = XC_TYPE_BOOL;
+    boolean_type.free = boolean_free;
+    boolean_type.mark = NULL;  // 布尔值不包含其他对象引用
+    boolean_type.equal = boolean_equal;
+    boolean_type.compare = boolean_compare;
     
-    /* 注册类型 */
-    int type_id = xc_register_type("boolean", &lifecycle);
-    XC_RUNTIME_EXT(rt)->boolean_type = &boolean_type;
+    // 注册类型
+    xc_boolean_type = &boolean_type;
 }
 
 /* Create boolean object */
 xc_object_t *xc_boolean_create(xc_runtime_t *rt, bool value) {
-    /* 使用 xc_gc_alloc 分配对象，并传递类型索引 */
+    // 分配内存
     xc_boolean_t *obj = (xc_boolean_t *)xc_gc_alloc(rt, sizeof(xc_boolean_t), XC_TYPE_BOOL);
     if (!obj) {
         return NULL;
     }
     
-    /* 设置正确的类型指针 */
-    ((xc_object_t *)obj)->type = XC_RUNTIME_EXT(rt)->boolean_type;
-
+    // 初始化对象
+    ((xc_object_t *)obj)->type = xc_boolean_type;
     obj->value = value;
+    
     return (xc_object_t *)obj;
 }
 
 /* Type checking */
 bool xc_is_boolean(xc_runtime_t *rt, xc_object_t *obj) {
-    return obj && obj->type == XC_RUNTIME_EXT(rt)->boolean_type;
+    return obj && obj->type == xc_boolean_type;
 }
 
 /* Value access */

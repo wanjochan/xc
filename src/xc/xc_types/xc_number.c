@@ -52,40 +52,47 @@ static xc_type_t number_type = {
     .compare = number_compare
 };
 
+/* Number creator function for use with create() */
+static xc_val number_creator(int type, va_list args) {
+    /* 从可变参数中获取数值 */
+    double value = va_arg(args, double);
+    
+    /* 调用实际的创建函数 */
+    return (xc_val)xc_number_create(NULL, value);
+}
+
 /* Register number type */
 void xc_register_number_type(xc_runtime_t *rt) {
-    /* 定义类型生命周期管理接口 */
-    static xc_type_lifecycle_t lifecycle = {
-        .initializer = NULL,
-        .cleaner = NULL,
-        .creator = NULL,  /* Number has its own creation functions */
-        .destroyer = (xc_destroy_func)number_free,
-        .marker = (xc_marker_func)number_mark,
-        .allocator = NULL
-    };
+    // 初始化 number 类型
+    number_type.name = "number";
+    number_type.flags = XC_TYPE_NUMBER;
+    number_type.free = number_free;
+    number_type.mark = NULL;  // 数字不包含其他对象引用
+    number_type.equal = number_equal;
+    number_type.compare = number_compare;
     
-    /* 注册类型 */
-    int type_id = xc_register_type("number", &lifecycle);
-    XC_RUNTIME_EXT(rt)->number_type = &number_type;
+    // 注册类型
+    xc_number_type = &number_type;
 }
 
 /* Create number object */
 xc_object_t *xc_number_create(xc_runtime_t *rt, double value) {
-    /* 使用 xc_gc_alloc 分配对象，并传递类型索引 */
+    // 分配内存
     xc_number_t *obj = (xc_number_t *)xc_gc_alloc(rt, sizeof(xc_number_t), XC_TYPE_NUMBER);
     if (!obj) {
         return NULL;
     }
     
-    /* 设置正确的类型指针 */
-    ((xc_object_t *)obj)->type = XC_RUNTIME_EXT(rt)->number_type;
+    // 初始化对象
+    ((xc_object_t *)obj)->type = xc_number_type;
     obj->value = value;
+    
     return (xc_object_t *)obj;
 }
 
 /* Type checking */
 bool xc_is_number(xc_runtime_t *rt, xc_object_t *obj) {
-    return obj && obj->type == XC_RUNTIME_EXT(rt)->number_type;
+    return obj && obj->type == xc_number_type;
 }
 
 /* Value access */
@@ -100,17 +107,20 @@ double xc_to_number(xc_runtime_t *rt, xc_object_t *obj) {
     if (!obj) {
         return 0.0;
     }
+    
     if (xc_is_number(rt, obj)) {
         return xc_number_value(rt, obj);
     }
+    
     if (xc_is_boolean(rt, obj)) {
         return xc_boolean_value(rt, obj) ? 1.0 : 0.0;
     }
+    
     if (xc_is_string(rt, obj)) {
         const char *str = xc_string_value(rt, obj);
-        char *end;
-        double val = strtod(str, &end);
-        return *end == '\0' ? val : 0.0;
+        if (!str) return 0.0;
+        return atof(str);
     }
+    
     return 0.0;
 }

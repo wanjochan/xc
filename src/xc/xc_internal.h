@@ -11,13 +11,27 @@
 typedef struct xc_object xc_object_t;
 typedef struct xc_type xc_type_t;
 typedef struct xc_exception_frame xc_exception_frame_t;
-typedef struct xc_runtime_extended xc_runtime_extended_t;
 typedef struct xc_stack_trace xc_stack_trace_t;
 typedef struct xc_exception xc_exception_t;
 
 /* Forward declarations for GC types and functions */
 typedef struct xc_gc_config xc_gc_config_t;
 typedef struct xc_gc_stats xc_gc_stats_t;
+
+/* 添加全局变量声明 */
+extern void *xc_gc_context;
+extern xc_type_t *xc_type_handlers[256];
+extern xc_exception_frame_t *xc_exception_frame;
+
+/* 内置类型的全局变量声明 */
+extern xc_type_t *xc_null_type;
+extern xc_type_t *xc_boolean_type;
+extern xc_type_t *xc_number_type;
+extern xc_type_t *xc_string_type;
+extern xc_type_t *xc_array_type;
+extern xc_type_t *xc_object_type;
+extern xc_type_t *xc_function_type;
+extern xc_type_t *xc_error_type;
 
 /* GC function declarations */
 void xc_gc_init(xc_runtime_t *rt, const xc_gc_config_t *config);
@@ -92,31 +106,9 @@ typedef struct xc_object_data_t {
     xc_object_t *prototype;   /* Prototype object */
 } xc_object_data_t;
 
-/* Cast runtime to extended runtime */
-#define XC_RUNTIME_EXT(rt) ((xc_runtime_extended_t *)(rt))
-
 /* 
- * Extended runtime structure with GC context
- * This extends the basic runtime structure with GC-specific fields
+ * Function structure for XC functions
  */
-typedef struct xc_runtime_extended {
-    xc_runtime_t base;        /* Base runtime structure */
-    void *gc_context;         /* Garbage collector context */
-    xc_type_t *type_handlers[256]; /* Type handlers for different object types */
-    xc_exception_frame_t *exception_frame; /* Current exception frame */
-    
-    /* Builtin types */
-    xc_type_t *null_type;     /* Type for null objects */
-    xc_type_t *boolean_type;  /* Type for boolean objects */
-    xc_type_t *number_type;   /* Type for number objects */
-    xc_type_t *string_type;   /* Type for string objects */
-    xc_type_t *array_type;    /* Type for array objects */
-    xc_type_t *object_type;   /* Type for generic objects */
-    xc_type_t *function_type; /* Type for function objects */
-    xc_type_t *error_type;    /* Type for error objects */
-} xc_runtime_extended_t;
-
-/* Function object structure */
 typedef struct xc_function_t {
     xc_object_t base;          /* Must be first */
     xc_function_ptr_t handler; /* Function handler */
