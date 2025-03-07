@@ -61,6 +61,7 @@ typedef xc_val (*xc_allocator_func)(size_t size);
 typedef xc_val (*xc_method_func)(xc_val self, xc_val arg);
 
 /* 类型生命周期管理结构 */
+//TODO 考虑合并 xc_type_t
 typedef struct {
     xc_initializer_func initializer;  /* 初始化函数 */
     xc_cleaner_func cleaner;          /* 清理函数 */
@@ -68,6 +69,10 @@ typedef struct {
     xc_destroy_func destroyer;        /* 销毁函数 */
     xc_allocator_func allocator;      /* 内存分配函数 */
     xc_marker_func marker;            /* GC标记函数 */
+    const char *name;
+    bool (*equal)(xc_val a, xc_val b);
+    int (*compare)(xc_val a, xc_val b);
+    int flags;//保留
 } xc_type_lifecycle_t;
 
 /* 运行时接口结构 */
@@ -80,6 +85,8 @@ typedef struct xc_runtime_t {
 
     int (*register_type)(const char* name, xc_type_lifecycle_t* lifecycle);
     int (*get_type_id)(const char* name);
+    //TODO 可以考虑加一个 get_type_by_id()=>xc_type_lifecycle_t* 
+    //NOTES: 不过目前内部写死也行，因为只有几个固定的type?
     
     //runtime, calling stack
     char (*register_method)(int type, const char* func_name, xc_method_func native_func);

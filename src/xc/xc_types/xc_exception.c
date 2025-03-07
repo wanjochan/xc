@@ -2,8 +2,28 @@
 // #include "../xc_gc.h"  // Removed since we've merged it into xc.c
 #include "../xc_internal.h"
 
-/* Error type descriptor */
-static xc_type_t error_type = {0};
+/* Forward declarations */
+static void xc_error_free(xc_runtime_t *rt, xc_object_t *obj);
+static void xc_error_mark(xc_runtime_t *rt, xc_object_t *obj);
+static bool error_equal(xc_val a, xc_val b);
+static int error_compare(xc_val a, xc_val b);
+static xc_val error_creator(int type, va_list args);
+
+/* Type descriptor for error type */
+static xc_type_lifecycle_t error_type = {
+    .initializer = NULL,
+    .cleaner = NULL,
+    .creator = error_creator,
+    .destroyer = (xc_destroy_func)xc_error_free,
+    .marker = (xc_marker_func)xc_error_mark,
+    .allocator = NULL,
+    .name = "error",
+    .equal = (bool (*)(xc_val, xc_val))error_equal,
+    .compare = (int (*)(xc_val, xc_val))error_compare,
+    .flags = 0
+};
+
+static xc_type_lifecycle_t *error_type_ptr = NULL;
 
 /* Create a stack trace entry */
 static xc_stack_trace_entry_t xc_stack_trace_entry_create(const char *function, const char *file, int line) {
@@ -345,19 +365,40 @@ static xc_object_t *xc_error_to_string(xc_runtime_t *rt, xc_object_t *obj) {
 
 /* Register error type */
 void xc_register_error_type(xc_runtime_t *rt) {
-    static xc_type_t *error_type_ptr = NULL;
+    static xc_type_lifecycle_t *error_type_ptr = NULL;
     
     // 如果已经注册，直接返回
     if (error_type_ptr) return;
     
     // 初始化错误类型
+    error_type.initializer = NULL;
+    error_type.cleaner = NULL;
+    error_type.creator = error_creator;
+    error_type.destroyer = (xc_destroy_func)xc_error_free;
+    error_type.marker = (xc_marker_func)xc_error_mark;
+    error_type.allocator = NULL;
     error_type.name = "error";
-    error_type.flags = XC_TYPE_EXCEPTION;
-    error_type.free = xc_error_free;
-    error_type.mark = xc_error_mark;
-    error_type.equal = NULL;  // 错误对象不支持相等比较
-    error_type.compare = NULL;  // 错误对象不支持排序比较
+    error_type.equal = (bool (*)(xc_val, xc_val))error_equal;
+    error_type.compare = (int (*)(xc_val, xc_val))error_compare;
+    error_type.flags = 0;
     
     // 注册类型
     error_type_ptr = &error_type;
+}
+
+/* Error comparison functions */
+static bool error_equal(xc_val a, xc_val b) {
+    // 错误对象只有在是同一个对象时才相等
+    return a == b;
+}
+
+static int error_compare(xc_val a, xc_val b) {
+    // 错误对象不支持排序比较，只返回内存地址比较
+    return (a < b) ? -1 : (a > b) ? 1 : 0;
+}
+
+/* Error creator function */
+static xc_val error_creator(int type, va_list args) {
+    const char *message = va_arg(args, const char *);
+    return (xc_val)xc_exception_create(NULL, XC_EXCEPTION_TYPE_INTERNAL, message);
 }

@@ -9,10 +9,38 @@
 
 /* Forward declarations */
 typedef struct xc_object xc_object_t;
-typedef struct xc_type xc_type_t;
+typedef struct xc_closure xc_closure_t;
 typedef struct xc_exception_frame xc_exception_frame_t;
-typedef struct xc_stack_trace xc_stack_trace_t;
-typedef struct xc_exception xc_exception_t;
+typedef struct xc_gc_context xc_gc_context_t;
+
+/* Type registry entry */
+typedef struct xc_type_entry {
+    const char* name;
+    int id;
+    xc_type_lifecycle_t lifecycle;
+    struct xc_type_entry* next;
+} xc_type_entry_t;
+
+/* Type registry structure */
+typedef struct {
+    int count;
+    xc_type_entry_t* buckets[256];
+} xc_type_registry_t;
+
+/* Global type handlers and instances */
+extern xc_type_lifecycle_t *xc_type_handlers[256];
+extern xc_type_registry_t type_registry;
+
+////NOTES： 其实可以后面设计一个 xc.get_type_by_id()来获得的，当然会慢一些，所以先考虑好再说
+/* Primitive type handlers */
+extern xc_type_lifecycle_t *xc_null_type;
+extern xc_type_lifecycle_t *xc_boolean_type;
+extern xc_type_lifecycle_t *xc_number_type;
+extern xc_type_lifecycle_t *xc_string_type;
+extern xc_type_lifecycle_t *xc_array_type;
+extern xc_type_lifecycle_t *xc_object_type;
+extern xc_type_lifecycle_t *xc_function_type;
+extern xc_type_lifecycle_t *xc_error_type;
 
 /* Forward declarations for GC types and functions */
 typedef struct xc_gc_config xc_gc_config_t;
@@ -20,19 +48,7 @@ typedef struct xc_gc_stats xc_gc_stats_t;
 
 /* 添加全局变量声明 */
 extern void *xc_gc_context;
-extern xc_type_t *xc_type_handlers[256];
 extern xc_exception_frame_t *xc_exception_frame;
-
-//TODO change to lifecycle...
-/* 内置类型的全局变量声明，name flags etc。其实我觉得直接用 lifecycle 才对 */
-extern xc_type_t *xc_null_type;
-extern xc_type_t *xc_boolean_type;
-extern xc_type_t *xc_number_type;
-extern xc_type_t *xc_string_type;
-extern xc_type_t *xc_array_type;
-extern xc_type_t *xc_object_type;
-extern xc_type_t *xc_function_type;
-extern xc_type_t *xc_error_type;
 
 /* GC function declarations */
 void xc_gc_init(xc_runtime_t *rt, const xc_gc_config_t *config);
@@ -45,6 +61,7 @@ xc_object_t *xc_gc_alloc(xc_runtime_t *rt, size_t size, int type_id);
 void xc_gc_free(xc_runtime_t *rt, xc_object_t *obj);
 void xc_gc_mark_permanent(xc_runtime_t *rt, xc_object_t *obj);
 void xc_gc_mark(xc_runtime_t *rt, xc_object_t *obj);
+void xc_gc_mark_val(xc_val obj);
 void xc_gc_add_ref(xc_runtime_t *rt, xc_object_t *obj);
 void xc_gc_release(xc_runtime_t *rt, xc_object_t *obj);
 int xc_gc_get_ref_count(xc_runtime_t *rt, xc_object_t *obj);
@@ -442,6 +459,7 @@ xc_object_t *xc_gc_alloc(xc_runtime_t *rt, size_t size, int type_id);
 void xc_gc_free(xc_runtime_t *rt, xc_object_t *obj);
 void xc_gc_mark_permanent(xc_runtime_t *rt, xc_object_t *obj);
 void xc_gc_mark(xc_runtime_t *rt, xc_object_t *obj);
+void xc_gc_mark_val(xc_val obj);
 void xc_gc_add_ref(xc_runtime_t *rt, xc_object_t *obj);
 void xc_gc_release(xc_runtime_t *rt, xc_object_t *obj);
 int xc_gc_get_ref_count(xc_runtime_t *rt, xc_object_t *obj);
@@ -505,22 +523,6 @@ static __thread struct {
 
 /* 类型注册表结构 */
 #define TYPE_HASH_SIZE 64
-
-typedef struct xc_type_entry {
-    const char* name;
-    int id;
-    xc_type_lifecycle_t lifecycle;
-    struct xc_type_entry* next;
-} xc_type_entry_t;
-
-typedef struct {
-    xc_type_entry_t* buckets[TYPE_HASH_SIZE];
-    int count;
-    int capacity;
-    xc_type_entry_t* entries;
-} xc_type_registry_t;
-
-static xc_type_registry_t type_registry;
 
 /* 对象头结构 - 每个对象的隐藏前缀 */
 typedef struct {

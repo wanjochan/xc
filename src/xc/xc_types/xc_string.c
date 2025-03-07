@@ -6,6 +6,13 @@
 #include "../xc_internal.h"
 // #include "../xc_gc.h"  // Removed since we've merged it into xc.c
 
+/* Forward declarations */
+static void string_mark(xc_runtime_t *rt, xc_object_t *obj);
+static void string_free(xc_runtime_t *rt, xc_object_t *obj);
+static bool string_equal(xc_runtime_t *rt, xc_object_t *a, xc_object_t *b);
+static int string_compare(xc_runtime_t *rt, xc_object_t *a, xc_object_t *b);
+static xc_val string_creator(int type, va_list args);
+
 /* String object structure */
 typedef struct {
     xc_object_t base;  /* Must be first */
@@ -50,19 +57,24 @@ static xc_val string_creator(int type, va_list args) {
 }
 
 /* Type descriptor for string type */
-static xc_type_t string_type = {0};
+static xc_type_lifecycle_t string_type = {
+    .initializer = NULL,
+    .cleaner = NULL,
+    .creator = string_creator,
+    .destroyer = (xc_destroy_func)string_free,
+    .marker = (xc_marker_func)string_mark,
+    .allocator = NULL,
+    .name = "string",
+    .equal = (bool (*)(xc_val, xc_val))string_equal,
+    .compare = (int (*)(xc_val, xc_val))string_compare,
+    .flags = XC_TYPE_PRIMITIVE
+};
 
 /* Register string type */
 void xc_register_string_type(xc_runtime_t *rt) {
-    // 初始化 string 类型
-    string_type.name = "string";
-    string_type.flags = XC_TYPE_STRING;
-    string_type.free = string_free;
-    string_type.mark = NULL;  // 字符串不包含其他对象引用
-    string_type.equal = string_equal;
-    string_type.compare = string_compare;
-    
-    // 注册类型
+    /* 定义类型生命周期管理接口 */
+    /* 注册类型 */
+    int type_id = xc_register_type("string", &string_type);
     xc_string_type = &string_type;
 }
 

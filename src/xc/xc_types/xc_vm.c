@@ -1,4 +1,6 @@
-#include "xc.h"
+#include "../xc.h"
+// #include "../xc_gc.h"  // Removed since we've merged it into xc.c
+#include "../xc_internal.h"
 
 /**
 ## design notes
@@ -82,6 +84,18 @@ typedef struct {
     xc_val result;          // 最后执行结果
 } xc_vm_t;
 
+/* Forward declarations */
+static void vm_marker(xc_val self, void (*mark_func)(xc_val));
+static int vm_destroy(xc_val self);
+static void vm_initialize(void);
+static xc_val vm_creator(int type, va_list args);
+static xc_val vm_to_string(xc_val self, xc_val arg);
+static xc_val vm_execute(xc_val self, xc_val arg);
+static xc_val vm_add_instruction(xc_val self, xc_val arg);
+static xc_val vm_reset(xc_val self, xc_val arg);
+static xc_val vm_get_result(xc_val self, xc_val arg);
+static xc_val vm_set_global(xc_val self, xc_val arg);
+
 /* VM 类型方法 */
 static xc_val vm_to_string(xc_val self, xc_val arg) {
     return xc.create(XC_TYPE_STRING, "vm");
@@ -146,22 +160,25 @@ static xc_val vm_creator(int type, va_list args) {
 }
 
 /* 注册 VM 类型 */
-// Using XC_TYPE_VM from xc.h instead of redefining it
 int _xc_type_vm = XC_TYPE_VM;
 
+/* Type descriptor for vm type */
+static xc_type_lifecycle_t vm_type = {
+    .initializer = vm_initialize,
+    .cleaner = NULL,
+    .creator = vm_creator,
+    .destroyer = vm_destroy,
+    .marker = vm_marker,
+    .allocator = NULL,
+    .name = "vm",
+    .equal = NULL,
+    .compare = NULL,
+    .flags = 0
+};
+
 __attribute__((constructor)) static void register_vm_type(void) {
-    /* 定义类型生命周期管理接口 */
-    static xc_type_lifecycle_t lifecycle = {
-        .initializer = vm_initialize,
-        .cleaner = NULL,
-        .creator = vm_creator,
-        .destroyer = vm_destroy,
-        .marker = vm_marker,
-        .allocator = NULL
-    };
-    
     /* 注册类型 */
-    _xc_type_vm = xc.register_type("vm", &lifecycle);
+    _xc_type_vm = xc.register_type("vm", &vm_type);
     // vm_initialize();
 }
 

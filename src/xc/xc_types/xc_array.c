@@ -11,6 +11,12 @@ static bool array_ensure_capacity(xc_array_t *arr, size_t needed);
 static xc_object_t *xc_to_string_internal(xc_runtime_t *rt, xc_object_t *obj);
 static xc_object_t *xc_array_join_elements(xc_runtime_t *rt, xc_object_t *arr, xc_object_t *separator);
 int xc_array_find_index_from(xc_runtime_t *rt, xc_object_t *arr, xc_object_t *value, int from_index);
+static void array_mark(xc_runtime_t *rt, xc_object_t *obj);
+static void array_free(xc_runtime_t *rt, xc_object_t *obj);
+static bool array_equal(xc_runtime_t *rt, xc_object_t *a, xc_object_t *b);
+static int array_compare(xc_runtime_t *rt, xc_object_t *a, xc_object_t *b);
+static xc_val array_creator(int type, va_list args);
+static void array_initializer(void);
 
 /* Helper functions for type checking - these should match the xc_is_* functions in other files */
 static bool xc_is_array_object(xc_runtime_t *rt, xc_object_t *obj) {
@@ -131,14 +137,18 @@ static int array_compare(xc_runtime_t *rt, xc_object_t *a, xc_object_t *b) {
     return 0;
 }
 
-/* Array type structure */
-static xc_type_t array_type = {
+/* Type descriptor for array type */
+static xc_type_lifecycle_t array_type = {
+    .initializer = NULL,
+    .cleaner = NULL,
+    .creator = array_creator,
+    .destroyer = (xc_destroy_func)array_free,
+    .marker = (xc_marker_func)array_mark,
+    .allocator = NULL,
     .name = "array",
-    .flags = XC_TYPE_COMPOSITE,
-    .mark = array_mark,
-    .free = array_free,
-    .equal = array_equal,
-    .compare = array_compare
+    .equal = (bool (*)(xc_val, xc_val))array_equal,
+    .compare = (int (*)(xc_val, xc_val))array_compare,
+    .flags = 0
 };
 
 /* Array creator function for type system */
@@ -198,21 +208,8 @@ static void array_initializer() {
 void xc_register_array_type(xc_runtime_t *rt) {
     printf("DEBUG xc_register_array_type: registering array type\n");
     
-    /* 创建生命周期管理结构 */
-    xc_type_lifecycle_t lifecycle = {
-        .initializer = array_initializer,
-        .cleaner = NULL,
-        .creator = array_creator,
-        .destroyer = NULL,
-        .allocator = NULL,
-        .marker = NULL
-    };
-    
-    printf("DEBUG array creator=%p\n", array_creator);
-    printf("DEBUG array initializer=%p\n", array_initializer);
-    
     /* 注册类型 */
-    int type_id = xc_register_type("array", &lifecycle);
+    int type_id = xc_register_type("array", &array_type);
     
     /* 使用 XC_RUNTIME_EXT 宏访问扩展运行时结构体 */
     xc_array_type = &array_type;

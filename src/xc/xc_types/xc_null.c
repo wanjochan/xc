@@ -10,6 +10,13 @@
 #include "../xc_internal.h"
 // #include "../xc_gc.h"  // Removed since we've merged it into xc.c
 
+/* Forward declarations */
+static void null_mark(xc_runtime_t *rt, xc_object_t *obj);
+static void null_free(xc_runtime_t *rt, xc_object_t *obj);
+static bool null_equal(xc_runtime_t *rt, xc_object_t *a, xc_object_t *b);
+static int null_compare(xc_runtime_t *rt, xc_object_t *a, xc_object_t *b);
+static xc_val null_creator(int type, va_list args);
+
 /* Null object structure */
 typedef struct {
     xc_object_t base;  /* Must be first */
@@ -40,13 +47,17 @@ static int null_compare(xc_runtime_t *rt, xc_object_t *a, xc_object_t *b) {
 }
 
 /* Type descriptor for null type */
-static xc_type_t null_type = {
+static xc_type_lifecycle_t null_type = {
+    .initializer = NULL,
+    .cleaner = NULL,
+    .creator = null_creator,
+    .destroyer = (xc_destroy_func)null_free,
+    .marker = (xc_marker_func)null_mark,
+    .allocator = NULL,
     .name = "null",
-    .flags = XC_TYPE_PRIMITIVE,
-    .mark = null_mark,
-    .free = null_free,
-    .equal = null_equal,
-    .compare = null_compare
+    .equal = (bool (*)(xc_val, xc_val))null_equal,
+    .compare = (int (*)(xc_val, xc_val))null_compare,
+    .flags = XC_TYPE_PRIMITIVE
 };
 
 /* Null creator function for use with create() */
@@ -58,17 +69,8 @@ static xc_val null_creator(int type, va_list args) {
 /* Register null type */
 void xc_register_null_type(xc_runtime_t *rt) {
     /* 定义类型生命周期管理接口 */
-    static xc_type_lifecycle_t lifecycle = {
-        .initializer = NULL,
-        .cleaner = NULL,
-        .creator = null_creator,  /* 设置创建函数 */
-        .destroyer = (xc_destroy_func)null_free,
-        .marker = (xc_marker_func)null_mark,
-        .allocator = NULL
-    };
-    
     /* 注册类型 */
-    int type_id = xc_register_type("null", &lifecycle);
+    int type_id = xc_register_type("null", &null_type);
     xc_null_type = &null_type;
 
     /* Create singleton null instance if not already created */

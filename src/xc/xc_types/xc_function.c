@@ -7,6 +7,13 @@
 // #include "../xc_gc.h"  // Removed since we've merged it into xc.c
 #include "../xc_internal.h"
 
+/* Forward declarations */
+static void function_mark(xc_runtime_t *rt, xc_object_t *obj);
+static void function_free(xc_runtime_t *rt, xc_object_t *obj);
+static bool function_equal(xc_runtime_t *rt, xc_object_t *a, xc_object_t *b);
+static int function_compare(xc_runtime_t *rt, xc_object_t *a, xc_object_t *b);
+static xc_val function_creator(int type, va_list args);
+
 /* Function methods */
 static void function_mark(xc_runtime_t *rt, xc_object_t *obj) {
     xc_function_t *func = (xc_function_t *)obj;
@@ -65,27 +72,35 @@ static int function_compare(xc_runtime_t *rt, xc_object_t *a, xc_object_t *b) {
     return 0;
 }
 
+/* Function creator function */
+static xc_val function_creator(int type, va_list args) {
+    // 获取函数指针和闭包
+    xc_function_ptr_t fn = va_arg(args, xc_function_ptr_t);
+    xc_object_t *closure = va_arg(args, xc_object_t *);
+    
+    // 创建函数对象
+    return (xc_val)xc_function_create(NULL, fn, closure);
+}
+
 /* Type descriptor for function type */
-static xc_type_t function_type = {
+static xc_type_lifecycle_t function_type = {
+    .initializer = NULL,
+    .cleaner = NULL,
+    .creator = function_creator,
+    .destroyer = (xc_destroy_func)function_free,
+    .marker = (xc_marker_func)function_mark,
+    .allocator = NULL,
     .name = "function",
-    .flags = XC_TYPE_CALLABLE,
-    .mark = function_mark,
-    .free = function_free,
-    .equal = function_equal,
-    .compare = function_compare
+    .equal = (bool (*)(xc_val, xc_val))function_equal,
+    .compare = (int (*)(xc_val, xc_val))function_compare,
+    .flags = 0
 };
 
 /* Register function type */
 void xc_register_function_type(xc_runtime_t *rt) {
-    // 初始化 function 类型
-    function_type.name = "function";
-    function_type.flags = XC_TYPE_FUNC;
-    function_type.free = function_free;
-    function_type.mark = function_mark;
-    function_type.equal = function_equal;
-    function_type.compare = function_compare;
-    
-    // 注册类型
+    /* 定义类型生命周期管理接口 */
+    /* 注册类型 */
+    int type_id = xc_register_type("function", &function_type);
     xc_function_type = &function_type;
 }
 

@@ -7,6 +7,13 @@
 // #include "../xc_gc.h"  // Removed since we've merged it into xc.c
 #include "../xc_internal.h"
 
+/* Forward declarations */
+static void number_mark(xc_runtime_t *rt, xc_object_t *obj);
+static void number_free(xc_runtime_t *rt, xc_object_t *obj);
+static bool number_equal(xc_runtime_t *rt, xc_object_t *a, xc_object_t *b);
+static int number_compare(xc_runtime_t *rt, xc_object_t *a, xc_object_t *b);
+static xc_val number_creator(int type, va_list args);
+
 /* Number type structure */
 typedef struct {
     xc_object_t base;  /* Must be first */
@@ -43,13 +50,17 @@ static int number_compare(xc_runtime_t *rt, xc_object_t *a, xc_object_t *b) {
 }
 
 /* Type descriptor for number type */
-static xc_type_t number_type = {
+static xc_type_lifecycle_t number_type = {
+    .initializer = NULL,
+    .cleaner = NULL,
+    .creator = number_creator,
+    .destroyer = (xc_destroy_func)number_free,
+    .marker = (xc_marker_func)number_mark,
+    .allocator = NULL,
     .name = "number",
-    .flags = XC_TYPE_PRIMITIVE,
-    .mark = number_mark,
-    .free = number_free,
-    .equal = number_equal,
-    .compare = number_compare
+    .equal = (bool (*)(xc_val, xc_val))number_equal,
+    .compare = (int (*)(xc_val, xc_val))number_compare,
+    .flags = XC_TYPE_PRIMITIVE
 };
 
 /* Number creator function for use with create() */
@@ -63,15 +74,9 @@ static xc_val number_creator(int type, va_list args) {
 
 /* Register number type */
 void xc_register_number_type(xc_runtime_t *rt) {
-    // 初始化 number 类型
-    number_type.name = "number";
-    number_type.flags = XC_TYPE_NUMBER;
-    number_type.free = number_free;
-    number_type.mark = NULL;  // 数字不包含其他对象引用
-    number_type.equal = number_equal;
-    number_type.compare = number_compare;
-    
-    // 注册类型
+    /* 定义类型生命周期管理接口 */
+    /* 注册类型 */
+    int type_id = xc_register_type("number", &number_type);
     xc_number_type = &number_type;
 }
 

@@ -7,6 +7,13 @@
 // #include "../xc_gc.h"  // Removed since we've merged it into xc.c
 #include "../xc_internal.h"
 
+/* Forward declarations */
+static void object_mark(xc_runtime_t *rt, xc_object_t *obj);
+static void object_free(xc_runtime_t *rt, xc_object_t *obj);
+static bool object_equal(xc_runtime_t *rt, xc_object_t *a, xc_object_t *b);
+static int object_compare(xc_runtime_t *rt, xc_object_t *a, xc_object_t *b);
+static xc_val object_creator(int type, va_list args);
+
 /* Initial capacity for object properties */
 #define INITIAL_CAPACITY 8
 
@@ -125,31 +132,42 @@ static int object_compare(xc_runtime_t *rt, xc_object_t *a, xc_object_t *b) {
     return 0;  /* Equal number of properties */
 }
 
+/* Object creator function */
+static xc_val object_creator(int type, va_list args) {
+    // 创建一个空对象
+    xc_object_data_t *obj = (xc_object_data_t *)xc_gc_alloc(NULL, sizeof(xc_object_data_t), XC_TYPE_OBJECT);
+    if (!obj) return NULL;
+    
+    // 初始化对象属性
+    obj->properties = NULL;
+    obj->count = 0;
+    obj->capacity = 0;
+    obj->prototype = NULL;
+    
+    return (xc_val)obj;
+}
+
 /* Type descriptor for object type */
-static xc_type_t object_type = {
+static xc_type_lifecycle_t object_type = {
+    .initializer = NULL,
+    .cleaner = NULL,
+    .creator = object_creator,
+    .destroyer = (xc_destroy_func)object_free,
+    .marker = (xc_marker_func)object_mark,
+    .allocator = NULL,
     .name = "object",
-    .flags = XC_TYPE_COMPOSITE,
-    .mark = object_mark,
-    .free = object_free,
-    .equal = object_equal,
-    .compare = object_compare
+    .equal = (bool (*)(xc_val, xc_val))object_equal,
+    .compare = (int (*)(xc_val, xc_val))object_compare,
+    .flags = 0
 };
 
 /* Register object type */
 void xc_register_object_type(xc_runtime_t *rt) {
     /* 定义类型生命周期管理接口 */
-    static xc_type_lifecycle_t lifecycle = {
-        .initializer = NULL,
-        .cleaner = NULL,
-        .creator = NULL,  /* Object has its own creation functions */
-        .destroyer = (xc_destroy_func)object_free,
-        .marker = (xc_marker_func)object_mark,
-        .allocator = NULL
-    };
-    
     /* 注册类型 */
-    int type_id = xc_register_type("object", &lifecycle);
+    int type_id = xc_register_type("object", &object_type);
     xc_object_type = &object_type;
+    /* 关联运行时 */
 }
 
 /* Create an object */

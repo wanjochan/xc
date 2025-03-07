@@ -8,6 +8,13 @@
 // Removed: xc_runtime_internal.h is now part of xc_internal.h
 #include "../xc_internal.h"
 
+/* Forward declarations */
+static void boolean_mark(xc_runtime_t *rt, xc_object_t *obj);
+static void boolean_free(xc_runtime_t *rt, xc_object_t *obj);
+static bool boolean_equal(xc_runtime_t *rt, xc_object_t *a, xc_object_t *b);
+static int boolean_compare(xc_runtime_t *rt, xc_object_t *a, xc_object_t *b);
+static xc_val boolean_creator(int type, va_list args);
+
 /* Boolean object structure */
 typedef struct {
     xc_object_t base;     /* Must be first */
@@ -51,13 +58,17 @@ static int boolean_compare(xc_runtime_t *rt, xc_object_t *a, xc_object_t *b) {
 }
 
 /* Type descriptor for boolean type */
-static xc_type_t boolean_type = {
+static xc_type_lifecycle_t boolean_type = {
+    .initializer = NULL,
+    .cleaner = NULL,
+    .creator = boolean_creator,
+    .destroyer = (xc_destroy_func)boolean_free,
+    .marker = (xc_marker_func)boolean_mark,
+    .allocator = NULL,
     .name = "boolean",
-    .flags = XC_TYPE_PRIMITIVE,
-    .mark = boolean_mark,
-    .free = boolean_free,
-    .equal = boolean_equal,
-    .compare = boolean_compare
+    .equal = (bool (*)(xc_val, xc_val))boolean_equal,
+    .compare = (int (*)(xc_val, xc_val))boolean_compare,
+    .flags = XC_TYPE_PRIMITIVE
 };
 
 /* Boolean creator function for use with create() */
@@ -71,15 +82,9 @@ static xc_val boolean_creator(int type, va_list args) {
 
 /* Register boolean type */
 void xc_register_boolean_type(xc_runtime_t *rt) {
-    // 初始化 boolean 类型
-    boolean_type.name = "boolean";
-    boolean_type.flags = XC_TYPE_BOOL;
-    boolean_type.free = boolean_free;
-    boolean_type.mark = NULL;  // 布尔值不包含其他对象引用
-    boolean_type.equal = boolean_equal;
-    boolean_type.compare = boolean_compare;
-    
-    // 注册类型
+    /* 定义类型生命周期管理接口 */
+    /* 注册类型 */
+    int type_id = xc_register_type("boolean", &boolean_type);
     xc_boolean_type = &boolean_type;
 }
 

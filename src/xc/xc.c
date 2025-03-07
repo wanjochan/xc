@@ -2,7 +2,7 @@
 #include "xc_internal.h"
 
 /* 根据类型ID获取类型处理器 */
-static xc_type_t* get_type_handler(int type_id) {
+static xc_type_lifecycle_t* get_type_handler(int type_id) {
     if (type_id >= 0 && type_id < 256) {
         return xc_type_handlers[type_id];
     }
@@ -1064,19 +1064,24 @@ XC_REQUIRES(xc_auto_init);
 XC_REQUIRES(xc_auto_shutdown);
 
 /* 定义全局变量 */
+//TODO 这个是不是应该放在线程上，而不是全局？？？
+
 void *xc_gc_context = NULL;
-xc_type_t *xc_type_handlers[256] = {0};
+xc_type_lifecycle_t *xc_type_handlers[256] = {0};
 xc_exception_frame_t *xc_exception_frame = NULL;
 
-/* 内置类型的全局变量定义 */
-xc_type_t *xc_null_type = NULL;
-xc_type_t *xc_boolean_type = NULL;
-xc_type_t *xc_number_type = NULL;
-xc_type_t *xc_string_type = NULL;
-xc_type_t *xc_array_type = NULL;
-xc_type_t *xc_object_type = NULL;
-xc_type_t *xc_function_type = NULL;
-xc_type_t *xc_error_type = NULL;
+/* 全局类型注册表 */
+xc_type_registry_t type_registry = {0};
+
+/* 内置类型处理器 */
+xc_type_lifecycle_t *xc_null_type = NULL;
+xc_type_lifecycle_t *xc_boolean_type = NULL;
+xc_type_lifecycle_t *xc_number_type = NULL;
+xc_type_lifecycle_t *xc_string_type = NULL;
+xc_type_lifecycle_t *xc_array_type = NULL;
+xc_type_lifecycle_t *xc_object_type = NULL;
+xc_type_lifecycle_t *xc_function_type = NULL;
+xc_type_lifecycle_t *xc_error_type = NULL;
 
 /* 全局运行时对象 */
 xc_runtime_t xc = {
@@ -1134,21 +1139,26 @@ static void pop_stack_frame(void) {
  * Returns true if objects are equal, false otherwise
  */
 bool xc_equal(xc_runtime_t *rt, xc_object_t *a, xc_object_t *b) {
-    if (!a || !b) return a == b;
+    // 如果是同一个对象，直接返回true
+    if (a == b) {
+        return true;
+    }
     
-    // 检查类型ID是否相同
-    if (a->type_id != b->type_id) return false;
+    // 如果类型不同，返回false
+    if (a->type_id != b->type_id) {
+        return false;
+    }
     
     // 获取类型处理器
-    xc_type_t *type_handler = get_type_handler(a->type_id);
+    xc_type_lifecycle_t *type_handler = get_type_handler(a->type_id);
     
     // 如果有equal函数，调用它
     if (type_handler && type_handler->equal) {
-        return type_handler->equal(rt, a, b);
+        return type_handler->equal((xc_val)a, (xc_val)b);
     }
     
-    // 默认比较：相同对象才相等
-    return a == b;
+    // 默认情况下，只有同一个对象才相等
+    return false;
 }
 
 /*
@@ -1156,51 +1166,48 @@ bool xc_equal(xc_runtime_t *rt, xc_object_t *a, xc_object_t *b) {
  * Returns -1 if a < b, 0 if a == b, 1 if a > b
  */
 int xc_compare(xc_runtime_t *rt, xc_object_t *a, xc_object_t *b) {
-    /* NULL check */
-    if (!a && !b) return 0;
-    if (!a) return -1;
-    if (!b) return 1;
+    // 如果是同一个对象，返回0
+    if (a == b) {
+        return 0;
+    }
     
-    /* Same object check */
-    if (a == b) return 0;
-    
-    /* Type check */
+    // 如果类型不同，按类型ID排序
     if (a->type_id != b->type_id) {
-        return (a->type_id < b->type_id) ? -1 : 1;
+        return a->type_id - b->type_id;
     }
     
     /* Delegate to type-specific compare function */
-    xc_type_t *type_handler = get_type_handler(a->type_id);
+    xc_type_lifecycle_t *type_handler = get_type_handler(a->type_id);
     if (type_handler && type_handler->compare) {
-        return type_handler->compare(rt, a, b);
+        return type_handler->compare((xc_val)a, (xc_val)b);
     }
     
-    /* Default to pointer comparison */
-    return (a < b) ? -1 : (a > b) ? 1 : 0;
+    // 默认情况下，按内存地址排序
+    return (a < b) ? -1 : 1;
 }
 
 /*
  * Strict equality check (same type and value)
  */
 bool xc_strict_equal(xc_runtime_t *rt, xc_object_t *a, xc_object_t *b) {
-    /* NULL check */
-    if (!a && !b) return true;
-    if (!a || !b) return false;
-    
-    /* Same object check */
-    if (a == b) return true;
-    
-    /* Type check */
-    if (a->type_id != b->type_id) return false;
-    
-    /* Delegate to type-specific equal function */
-    xc_type_t *type_handler = get_type_handler(a->type_id);
-    if (type_handler && type_handler->equal) {
-        return type_handler->equal(rt, a, b);
+    // 如果是同一个对象，直接返回true
+    if (a == b) {
+        return true;
     }
     
-    /* Default to pointer comparison */
-    return false; // 严格相等要求是同一个对象
+    // 如果类型不同，返回false
+    if (a->type_id != b->type_id) {
+        return false;
+    }
+    
+    /* Delegate to type-specific equal function */
+    xc_type_lifecycle_t *type_handler = get_type_handler(a->type_id);
+    if (type_handler && type_handler->equal) {
+        return type_handler->equal((xc_val)a, (xc_val)b);
+    }
+    
+    // 默认情况下，只有同一个对象才相等
+    return false;
 }
 
 /* 
@@ -1291,73 +1298,98 @@ void xc_gc_shutdown(xc_runtime_t *rt) {
 
 /* Mark phase of GC - traverse object and mark all reachable objects */
 void xc_gc_mark(xc_runtime_t *rt, xc_object_t *obj) {
-    if (!obj) return;
+    if (!obj || obj->gc_color != XC_COLOR_WHITE) {
+        return;  // 已经标记过或不需要标记
+    }
     
-    /* Object is already marked, skip it */
-    if (obj->gc_color == XC_GC_GRAY || obj->gc_color == XC_GC_BLACK) return;
+    // 将对象标记为灰色
+    obj->gc_color = XC_COLOR_GRAY;
     
-    /* Mark object as gray (reachable but children not scanned) */
-    obj->gc_color = XC_GC_GRAY;
-    
-    /* Add to gray list for processing */
+    // 获取GC上下文
     xc_gc_context_t *gc = (xc_gc_context_t *)xc_gc_context;
+    if (!gc) {
+        return;
+    }
+    
+    // 将对象添加到灰色列表
     obj->gc_next = gc->gray_list;
     gc->gray_list = obj;
+}
+
+/* 标记值为可达（用于 marker 函数） */
+void xc_gc_mark_val(xc_val val) {
+    // 获取当前运行时
+    xc_runtime_t *rt = &xc;
+    
+    // 转换为对象指针并标记
+    xc_object_t *obj = (xc_object_t *)val;
+    xc_gc_mark(rt, obj);
 }
 
 /* Process gray list and mark all reachable objects */
 static void xc_gc_process_gray_list(xc_runtime_t *rt) {
     xc_gc_context_t *gc = (xc_gc_context_t *)xc_gc_context;
-    if (!gc) return;
     
+    // 处理灰色对象列表
     xc_object_t *obj = gc->gray_list;
+    gc->gray_list = NULL;
+    
     while (obj) {
-        // 从灰色列表中移除
-        gc->gray_list = obj->gc_next;
+        // 将对象标记为黑色
+        obj->gc_color = XC_COLOR_BLACK;
+        
+        // 将对象从灰色列表移到黑色列表
+        xc_object_t *next = obj->gc_next;
         obj->gc_next = gc->black_list;
         gc->black_list = obj;
         
-        // 标记引用的对象
-        xc_type_t *type_handler = get_type_handler(obj->type_id);
-        if (type_handler && type_handler->mark) {
-            type_handler->mark(rt, obj);
+        // 标记对象引用的其他对象
+        xc_type_lifecycle_t *type_handler = get_type_handler(obj->type_id);
+        if (type_handler && type_handler->marker) {
+            type_handler->marker((xc_val)obj, xc_gc_mark_val);
         }
         
-        // 处理下一个对象
-        obj = gc->gray_list;
+        obj = next;
     }
 }
 
 /* Sweep phase of GC - detect and free unreachable objects */
 static size_t xc_gc_sweep(xc_runtime_t *rt) {
     xc_gc_context_t *gc = (xc_gc_context_t *)xc_gc_context;
-    if (!gc) return 0;
-    
     size_t freed_count = 0;
     
-    /* Sweep white objects (unreachable) */
+    // 遍历白色对象列表，释放未标记的对象
     xc_object_t *curr = gc->white_list;
     xc_object_t *prev = NULL;
     
     while (curr) {
         xc_object_t *next = curr->gc_next;
         
-        /* Call type-specific free function if provided */
-        xc_type_t *type_handler = get_type_handler(curr->type_id);
-        if (type_handler && type_handler->free) {
-            type_handler->free(rt, curr);
+        // 如果对象是白色的，释放它
+        if (curr->gc_color == XC_COLOR_WHITE) {
+            // 调用类型特定的释放函数
+            xc_type_lifecycle_t *type_handler = get_type_handler(curr->type_id);
+            if (type_handler && type_handler->destroyer) {
+                type_handler->destroyer((xc_val)curr);
+            }
+            
+            // 从链表中移除
+            if (prev) {
+                prev->gc_next = next;
+            } else {
+                gc->white_list = next;
+            }
+            
+            // 释放内存
+            free(curr);
+            freed_count++;
+        } else {
+            // 保留对象
+            prev = curr;
         }
         
-        /* Free the object */
-        free(curr);
-        freed_count++;
-        
-        /* Move to next object */
         curr = next;
     }
-    
-    /* Clear white list */
-    gc->white_list = NULL;
     
     return freed_count;
 }
@@ -1390,7 +1422,7 @@ static void xc_gc_reset_colors(xc_runtime_t *rt) {
         }
         
         /* Reset color to white */
-        obj->gc_color = XC_GC_WHITE;
+        obj->gc_color = XC_COLOR_WHITE;
         
         /* Add to white list */
         obj->gc_next = gc->white_list;
@@ -1463,7 +1495,7 @@ xc_object_t *xc_gc_alloc(xc_runtime_t *rt, size_t size, int type_id) {
     memset(obj, 0, size);
     obj->size = size;
     obj->ref_count = 1;
-    obj->gc_color = XC_GC_WHITE;
+    obj->gc_color = XC_COLOR_WHITE;
     
     // 设置类型ID
     obj->type_id = type_id;
@@ -1481,38 +1513,30 @@ xc_object_t *xc_gc_alloc(xc_runtime_t *rt, size_t size, int type_id) {
 
 /* Free an object */
 void xc_gc_free(xc_runtime_t *rt, xc_object_t *obj) {
-    if (!obj) return;
-    
-    // 获取GC上下文
-    xc_gc_context_t *gc = (xc_gc_context_t *)xc_gc_context;
-    if (!gc) {
-        // 如果GC未初始化，直接释放
-        free(obj);
+    if (!obj) {
         return;
     }
     
-    // 调用类型特定的释放函数
-    xc_type_t *type_handler = get_type_handler(obj->type_id);
-    if (type_handler && type_handler->free) {
-        type_handler->free(rt, obj);
+    // 减少引用计数
+    obj->ref_count--;
+    
+    // 如果引用计数为0，释放对象
+    if (obj->ref_count <= 0) {
+        // 调用类型特定的释放函数
+        xc_type_lifecycle_t *type_handler = get_type_handler(obj->type_id);
+        if (type_handler && type_handler->destroyer) {
+            type_handler->destroyer((xc_val)obj);
+        }
+        
+        // 释放内存
+        free(obj);
     }
-    
-    // 从GC链表中移除
-    // 这里需要遍历链表找到对象，或者使用更复杂的数据结构
-    // 简化起见，这里省略了这一步
-    
-    // 更新统计信息
-    gc->used_memory -= obj->size;
-    gc->total_freed++;
-    
-    // 释放内存
-    free(obj);
 }
 
 /* Mark an object as permanently reachable */
 void xc_gc_mark_permanent(xc_runtime_t *rt, xc_object_t *obj) {
     if (!obj) return;
-    obj->gc_color = XC_GC_PERMANENT;
+    obj->gc_color = XC_COLOR_BLACK;
 }
 
 /* Add a reference to an object */
