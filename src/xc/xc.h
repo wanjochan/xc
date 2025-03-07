@@ -4,6 +4,10 @@
 //notes: debpends on cosmopolitan, not our infrax, but will change soon
 #include "cosmopolitan.h"
 
+/**
+xc.h => libxc.h, don't change until approved
+ */
+
 #define XC_FALSE 0
 #define XC_TRUE 1
 
@@ -106,9 +110,9 @@ typedef struct xc_runtime_t {
     
 } xc_runtime_t;
 
-/* 全局运行时对象 */
+/* 全局运行时对象单例 */
 extern xc_runtime_t xc;
 
-#define XC_REQUIRES(x) typeof(x) *const requires_##x = &(x)
+#define XC_REQUIRES(x) typeof(x) *const xc_requires_##x = &(x)
 
 #endif /* XC_H */

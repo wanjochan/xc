@@ -5,25 +5,12 @@
 #include "../xc.h"
 #include "../xc_object.h"
 #include "../xc_gc.h"
+#include "../xc_runtime_internal.h"
 #include "xc_types.h"
+#include "xc_object_data.h"
 
 /* Initial capacity for object properties */
 #define INITIAL_CAPACITY 8
-
-/* Object property entry */
-typedef struct {
-    xc_object_t *key;    /* String key */
-    xc_object_t *value;  /* Any value */
-} xc_property_t;
-
-/* Object structure */
-typedef struct {
-    xc_object_t base;          /* Must be first */
-    xc_property_t *properties; /* Array of properties */
-    size_t count;             /* Number of properties */
-    size_t capacity;          /* Allocated capacity */
-    xc_object_t *prototype;   /* Prototype object for inheritance */
-} xc_object_data_t;
 
 /* Internal helper: Find property by key */
 static xc_property_t *find_property(xc_object_data_t *obj, const char *key) {

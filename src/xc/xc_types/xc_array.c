@@ -5,15 +5,9 @@
 #include "../xc.h"
 #include "../xc_object.h"
 #include "../xc_gc.h"
+#include "../xc_runtime_internal.h"
 #include "xc_types.h"
-
-/* Array object structure */
-typedef struct {
-    xc_object_t base;     /* Must be first */
-    xc_object_t **items;  /* Array of object pointers */
-    size_t length;        /* Current number of items */
-    size_t capacity;      /* Allocated capacity */
-} xc_array_t;
+#include "xc_array.h"
 
 /* Forward declarations */
 static bool array_ensure_capacity(xc_array_t *arr, size_t needed);

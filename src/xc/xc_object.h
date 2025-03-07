@@ -24,9 +24,6 @@ typedef struct xc_object {
     /* Object data follows this header */
 } xc_object_t;
 
-/* Cast runtime to extended runtime */
-#define XC_RUNTIME_EXT(rt) ((xc_runtime_extended_t *)(rt))
-
 /* Type flags */
 #define XC_TYPE_PRIMITIVE  0x0001  /* Primitive type (number, string, etc) */
 #define XC_TYPE_COMPOSITE 0x0002   /* Composite type (array, object) */
@@ -46,28 +43,10 @@ typedef struct xc_type {
     int (*compare)(xc_runtime_t *rt, xc_object_t *a, xc_object_t *b);  /* Ordering comparison */
 } xc_type_t;
 
-/* Forward declaration for exception frame */
+/* Forward declaration for exception frame - kept for backward compatibility */
 typedef struct xc_exception_frame xc_exception_frame_t;
 
-/* 
- * Extended runtime structure with GC context
- * This extends the basic runtime structure with GC-specific fields
- */
-typedef struct xc_runtime_extended {
-    xc_runtime_t base;        /* Base runtime structure */
-    void *gc_context;         /* Garbage collector context */
-    xc_type_t *type_handlers[256]; /* Type handlers for different object types */
-    xc_exception_frame_t *exception_frame; /* Current exception frame */
-    
-    /* Builtin types */
-    xc_type_t *null_type;     /* Type for null objects */
-    xc_type_t *boolean_type;  /* Type for boolean objects */
-    xc_type_t *number_type;   /* Type for number objects */
-    xc_type_t *string_type;   /* Type for string objects */
-    xc_type_t *array_type;    /* Type for array objects */
-    xc_type_t *object_type;   /* Type for generic objects */
-    xc_type_t *function_type; /* Type for function objects */
-    xc_type_t *error_type;    /* Type for error objects */
-} xc_runtime_extended_t;
+/* Forward declaration of extended runtime */
+typedef struct xc_runtime_extended xc_runtime_extended_t;
 
 #endif /* XC_OBJECT_H */ 

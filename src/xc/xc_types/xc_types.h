@@ -36,7 +36,8 @@ xc_object_t *xc_array_create(xc_runtime_t *rt);
 xc_object_t *xc_array_create_with_capacity(xc_runtime_t *rt, size_t capacity);
 xc_object_t *xc_array_create_with_values(xc_runtime_t *rt, xc_object_t **values, size_t count);
 xc_object_t *xc_object_create(xc_runtime_t *rt);
-xc_object_t *xc_function_create(xc_runtime_t *rt, xc_function_ptr_t fn, void *user_data);
+xc_object_t *xc_function_create(xc_runtime_t *rt, xc_function_ptr_t fn, xc_object_t *closure);
+xc_object_t *xc_function_get_closure(xc_runtime_t *rt, xc_object_t *func);
 
 /*
  * Type conversion functions

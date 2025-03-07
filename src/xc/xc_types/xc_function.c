@@ -5,16 +5,9 @@
 #include "../xc.h"
 #include "../xc_object.h"
 #include "../xc_gc.h"
+#include "../xc_runtime_internal.h"
 #include "xc_types.h"
-
-/* Function object structure */
-typedef struct {
-    xc_object_t base;            /* Must be first */
-    xc_function_ptr_t handler;   /* Function handler */
-    xc_object_t *this_obj;       /* Bound 'this' object */
-    void *user_data;             /* User data (closure) */
-    size_t arg_count;            /* Expected argument count */
-} xc_function_t;
+#include "xc_function.h"
 
 /* Function methods */
 static void function_mark(xc_runtime_t *rt, xc_object_t *obj) {
@@ -23,7 +16,10 @@ static void function_mark(xc_runtime_t *rt, xc_object_t *obj) {
         /* 使用 xc_gc_mark 标记对象 */
         xc_gc_mark(rt, func->this_obj);
     }
-    /* Note: user_data is not marked as it's opaque data */
+    if (func->closure) {
+        /* 标记闭包环境 */
+        xc_gc_mark(rt, func->closure);
+    }
 }
 
 static void function_free(xc_runtime_t *rt, xc_object_t *obj) {
@@ -32,7 +28,10 @@ static void function_free(xc_runtime_t *rt, xc_object_t *obj) {
         /* 使用 xc_gc_free 释放对象 */
         xc_gc_free(rt, func->this_obj);
     }
-    /* Note: user_data cleanup is caller's responsibility */
+    if (func->closure) {
+        /* 释放闭包环境 */
+        xc_gc_free(rt, func->closure);
+    }
 }
 
 static bool function_equal(xc_runtime_t *rt, xc_object_t *a, xc_object_t *b) {
@@ -43,9 +42,9 @@ static bool function_equal(xc_runtime_t *rt, xc_object_t *a, xc_object_t *b) {
     xc_function_t *func_a = (xc_function_t *)a;
     xc_function_t *func_b = (xc_function_t *)b;
     
-    /* Functions are equal only if they have the same handler and user_data */
+    /* Functions are equal only if they have the same handler, closure and this_obj */
     return func_a->handler == func_b->handler && 
-           func_a->user_data == func_b->user_data &&
+           func_a->closure == func_b->closure &&
            func_a->this_obj == func_b->this_obj;
 }
 
@@ -61,9 +60,9 @@ static int function_compare(xc_runtime_t *rt, xc_object_t *a, xc_object_t *b) {
     if (func_a->handler < func_b->handler) return -1;
     if (func_a->handler > func_b->handler) return 1;
     
-    /* If handlers are equal, compare user_data */
-    if (func_a->user_data < func_b->user_data) return -1;
-    if (func_a->user_data > func_b->user_data) return 1;
+    /* If handlers are equal, compare closures (pointer comparison) */
+    if (func_a->closure < func_b->closure) return -1;
+    if (func_a->closure > func_b->closure) return 1;
     
     return 0;
 }
@@ -84,7 +83,7 @@ void xc_register_function_type(xc_runtime_t *rt) {
 }
 
 /* Create function object */
-xc_object_t *xc_function_create(xc_runtime_t *rt, xc_function_ptr_t fn, void *user_data) {
+xc_object_t *xc_function_create(xc_runtime_t *rt, xc_function_ptr_t fn, xc_object_t *closure) {
     /* 使用 xc_gc_alloc 分配对象，并传递类型索引 */
     xc_function_t *obj = (xc_function_t *)xc_gc_alloc(rt, sizeof(xc_function_t), XC_TYPE_FUNC);
     if (!obj) {
@@ -96,8 +95,7 @@ xc_object_t *xc_function_create(xc_runtime_t *rt, xc_function_ptr_t fn, void *us
 
     obj->handler = fn;
     obj->this_obj = NULL;
-    obj->user_data = user_data;
-    obj->arg_count = 0;  /* Default to variable arguments */
+    obj->closure = closure;  /* Initialize closure with the provided value */
 
     return (xc_object_t *)obj;
 }
@@ -143,11 +141,11 @@ bool xc_is_function(xc_runtime_t *rt, xc_object_t *obj) {
     return obj && obj->type == XC_RUNTIME_EXT(rt)->function_type;
 }
 
-/* Access user data */
-void *xc_function_get_user_data(xc_runtime_t *rt, xc_object_t *func) {
+/* Access closure */
+xc_object_t *xc_function_get_closure(xc_runtime_t *rt, xc_object_t *func) {
     assert(xc_is_function(rt, func));
     xc_function_t *function = (xc_function_t *)func;
-    return function->user_data;
+    return function->closure;
 }
 
 xc_object_t *xc_function_get_this(xc_runtime_t *rt, xc_object_t *func) {

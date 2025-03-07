@@ -7,6 +7,7 @@
 #include "xc_object.h"
 #include "xc_gc.h"
 #include "xc_types/xc_types.h"
+#include "xc_runtime_internal.h"
 
 /* Error object structure */
 typedef struct {
