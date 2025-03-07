@@ -1,6 +1,10 @@
-#include "../xc.h"
-// #include "../xc_gc.h"  // Removed since we've merged it into xc.c
+#include <stdio.h>
+#include <stdlib.h>
 #include "../xc_internal.h"
+#include <setjmp.h>
+
+/* 异常帧链表头 - 使用外部声明而不是定义 */
+extern xc_exception_frame_t *xc_exception_frame;
 
 /* Forward declarations */
 static void xc_error_free(xc_runtime_t *rt, xc_object_t *obj);
@@ -131,9 +135,83 @@ static xc_exception_t *xc_exception_create_internal(xc_runtime_t *rt, int type, 
     return (xc_exception_t *)exception;
 }
 
+/* 设置异常的cause（异常链） */
+static xc_val xc_exception_set_cause(xc_val self, xc_val arg) {
+    if (!self || ((xc_object_t *)self)->type_id != XC_TYPE_EXCEPTION) {
+        return NULL;
+    }
+    
+    xc_exception_t *exception = (xc_exception_t *)self;
+    
+    /* 只有当arg是异常对象时才设置cause */
+    if (arg && ((xc_object_t *)arg)->type_id == XC_TYPE_EXCEPTION) {
+        exception->cause = (struct xc_exception *)arg;
+    }
+    
+    return self;
+}
+
+/* 获取异常的cause */
+static xc_val xc_exception_get_cause_method(xc_val self, xc_val arg) {
+    if (!self || ((xc_object_t *)self)->type_id != XC_TYPE_EXCEPTION) {
+        return NULL;
+    }
+    
+    xc_exception_t *exception = (xc_exception_t *)self;
+    return (xc_val)exception->cause;
+}
+
+/* 获取异常的消息 */
+static xc_val xc_exception_get_message_method(xc_val self, xc_val arg) {
+    if (!self || ((xc_object_t *)self)->type_id != XC_TYPE_EXCEPTION) {
+        return NULL;
+    }
+    
+    xc_exception_t *exception = (xc_exception_t *)self;
+    return xc_string_create(NULL, exception->message ? exception->message : "");
+}
+
+/* 获取异常的类型 */
+static xc_val xc_exception_get_type_method(xc_val self, xc_val arg) {
+    if (!self || ((xc_object_t *)self)->type_id != XC_TYPE_EXCEPTION) {
+        return NULL;
+    }
+    
+    xc_exception_t *exception = (xc_exception_t *)self;
+    return xc_number_create(NULL, (double)exception->type);
+}
+
+/* 获取异常的堆栈跟踪 */
+static xc_val xc_exception_get_stack_trace_method(xc_val self, xc_val arg) {
+    if (!self || ((xc_object_t *)self)->type_id != XC_TYPE_EXCEPTION) {
+        return NULL;
+    }
+    
+    xc_exception_t *exception = (xc_exception_t *)self;
+    
+    if (!exception->stack_trace) {
+        return NULL;
+    }
+    
+    /* 创建一个字符串表示堆栈跟踪 */
+    char *trace_str = xc_stack_trace_to_string(NULL, exception->stack_trace);
+    if (!trace_str) {
+        return NULL;
+    }
+    
+    xc_val result = xc_string_create(NULL, trace_str);
+    free(trace_str);
+    
+    return result;
+}
+
+/* 全局未捕获异常处理器 */
+static xc_val g_uncaught_exception_handler = NULL;
+
 /* Initialize the exception handling system */
 void xc_exception_init(xc_runtime_t *rt) {
     xc_exception_frame = NULL;
+    g_uncaught_exception_handler = NULL;
     
     /* Register the error type */
     xc_register_error_type(rt);
@@ -141,7 +219,8 @@ void xc_exception_init(xc_runtime_t *rt) {
 
 /* Shutdown exception subsystem */
 void xc_exception_shutdown(xc_runtime_t *rt) {
-    /* Nothing to do here */
+    /* 清理未捕获异常处理器 */
+    g_uncaught_exception_handler = NULL;
 }
 
 /* Create a new exception object */
@@ -154,15 +233,61 @@ xc_object_t *xc_exception_create_with_cause(xc_runtime_t *rt, int type, const ch
     return (xc_object_t *)xc_exception_create_internal(rt, type, message, cause);
 }
 
+/* 设置未捕获异常处理器 */
+void xc_set_uncaught_exception_handler(xc_runtime_t *rt, xc_val handler) {
+    if (handler && ((xc_object_t *)handler)->type_id == XC_TYPE_FUNC) {
+        g_uncaught_exception_handler = handler;
+    } else {
+        g_uncaught_exception_handler = NULL;
+    }
+}
+
+/* 获取当前未捕获异常处理器 */
+xc_val xc_get_uncaught_exception_handler(xc_runtime_t *rt) {
+    return g_uncaught_exception_handler;
+}
+
 /* Throw an exception */
 void xc_exception_throw(xc_runtime_t *rt, xc_object_t *exception) {
     if (!xc_exception_frame) {
-        fprintf(stderr, "Uncaught exception: ");
-        /* Print exception details */
-        // ...
-        exit(1);
+        /* 没有异常处理框架，这是一个未捕获的异常 */
+        
+        /* 如果有未捕获异常处理器，调用它 */
+        if (g_uncaught_exception_handler && ((xc_object_t *)g_uncaught_exception_handler)->type_id == XC_TYPE_FUNC) {
+            xc_val args[1] = {exception};
+            xc_function_invoke(g_uncaught_exception_handler, NULL, 1, args);
+        } else {
+            /* 没有处理器，打印异常信息并退出 */
+            fprintf(stderr, "Uncaught exception: ");
+            
+            /* 打印异常详情 */
+            if (exception && ((xc_object_t *)exception)->type_id == XC_TYPE_EXCEPTION) {
+                xc_exception_t *exc = (xc_exception_t *)exception;
+                fprintf(stderr, "%s\n", exc->message ? exc->message : "No message");
+                
+                /* 打印堆栈跟踪 */
+                if (exc->stack_trace) {
+                    xc_stack_trace_print(rt, exc->stack_trace);
+                }
+                
+                /* 打印异常链 */
+                xc_exception_t *cause = exc->cause;
+                if (cause) {
+                    fprintf(stderr, "Caused by: %s\n", cause->message ? cause->message : "No message");
+                    if (cause->stack_trace) {
+                        xc_stack_trace_print(rt, cause->stack_trace);
+                    }
+                }
+            } else {
+                fprintf(stderr, "Unknown exception\n");
+            }
+            
+            exit(1);
+        }
+        return;
     }
     
+    /* 设置当前异常帧的异常并进行longjmp */
     xc_exception_frame->exception = exception;
     
     longjmp(xc_exception_frame->jmp, 1);
@@ -170,28 +295,28 @@ void xc_exception_throw(xc_runtime_t *rt, xc_object_t *exception) {
 
 /* Get exception type */
 int xc_exception_get_type(xc_runtime_t *rt, xc_object_t *exception) {
-    if (!exception || exception->type_id != XC_TYPE_EXCEPTION) return -1;
+    if (!exception || ((xc_object_t *)exception)->type_id != XC_TYPE_EXCEPTION) return -1;
     xc_exception_t *exc = (xc_exception_t *)exception;
     return exc->type;
 }
 
 /* Get exception message */
 const char *xc_exception_get_message(xc_runtime_t *rt, xc_object_t *exception) {
-    if (!exception || exception->type_id != XC_TYPE_EXCEPTION) return "Not an exception";
+    if (!exception || ((xc_object_t *)exception)->type_id != XC_TYPE_EXCEPTION) return "Not an exception";
     xc_exception_t *exc = (xc_exception_t *)exception;
     return exc->message;
 }
 
 /* Get exception cause */
 xc_object_t *xc_exception_get_cause(xc_runtime_t *rt, xc_object_t *exception) {
-    if (!exception || exception->type_id != XC_TYPE_EXCEPTION) return NULL;
+    if (!exception || ((xc_object_t *)exception)->type_id != XC_TYPE_EXCEPTION) return NULL;
     xc_exception_t *exc = (xc_exception_t *)exception;
     return (xc_object_t *)exc->cause;
 }
 
 /* Get exception stack trace */
 xc_stack_trace_t *xc_exception_get_stack_trace(xc_runtime_t *rt, xc_object_t *exception) {
-    if (!exception || exception->type_id != XC_TYPE_EXCEPTION) return NULL;
+    if (!exception || ((xc_object_t *)exception)->type_id != XC_TYPE_EXCEPTION) return NULL;
     xc_exception_t *exc = (xc_exception_t *)exception;
     return exc->stack_trace;
 }
@@ -299,7 +424,7 @@ xc_object_t *xc_exception_create_internal_error(xc_runtime_t *rt, const char *me
 
 /* Free an error object */
 static void xc_error_free(xc_runtime_t *rt, xc_object_t *obj) {
-    if (!obj || obj->type_id != XC_TYPE_EXCEPTION) return;
+    if (!obj || ((xc_object_t *)obj)->type_id != XC_TYPE_EXCEPTION) return;
     
     xc_exception_t *exception = (xc_exception_t *)obj;
     
@@ -320,7 +445,7 @@ static void xc_error_free(xc_runtime_t *rt, xc_object_t *obj) {
 
 /* Mark an error object for GC */
 static void xc_error_mark(xc_runtime_t *rt, xc_object_t *obj) {
-    if (!obj || obj->type_id != XC_TYPE_EXCEPTION) return;
+    if (!obj || ((xc_object_t *)obj)->type_id != XC_TYPE_EXCEPTION) return;
     
     xc_exception_t *exception = (xc_exception_t *)obj;
     
@@ -332,7 +457,7 @@ static void xc_error_mark(xc_runtime_t *rt, xc_object_t *obj) {
 
 /* Convert an error to a string */
 static xc_object_t *xc_error_to_string(xc_runtime_t *rt, xc_object_t *obj) {
-    if (!obj || obj->type_id != XC_TYPE_EXCEPTION) return NULL;
+    if (!obj || ((xc_object_t *)obj)->type_id != XC_TYPE_EXCEPTION) return NULL;
     
     xc_exception_t *exception = (xc_exception_t *)obj;
     
@@ -365,25 +490,19 @@ static xc_object_t *xc_error_to_string(xc_runtime_t *rt, xc_object_t *obj) {
 
 /* Register error type */
 void xc_register_error_type(xc_runtime_t *rt) {
-    static xc_type_lifecycle_t *error_type_ptr = NULL;
-    
-    // 如果已经注册，直接返回
     if (error_type_ptr) return;
     
-    // 初始化错误类型
-    error_type.initializer = NULL;
-    error_type.cleaner = NULL;
-    error_type.creator = error_creator;
-    error_type.destroyer = (xc_destroy_func)xc_error_free;
-    error_type.marker = (xc_marker_func)xc_error_mark;
-    error_type.allocator = NULL;
-    error_type.name = "error";
-    error_type.equal = (bool (*)(xc_val, xc_val))error_equal;
-    error_type.compare = (int (*)(xc_val, xc_val))error_compare;
-    error_type.flags = 0;
-    
-    // 注册类型
     error_type_ptr = &error_type;
+    
+    /* Register the error type */
+    int type_id = xc_register_type("error", error_type_ptr);
+    
+    /* Register methods for the error type */
+    rt->register_method(XC_TYPE_EXCEPTION, "setCause", xc_exception_set_cause);
+    rt->register_method(XC_TYPE_EXCEPTION, "getCause", xc_exception_get_cause_method);
+    rt->register_method(XC_TYPE_EXCEPTION, "getMessage", xc_exception_get_message_method);
+    rt->register_method(XC_TYPE_EXCEPTION, "getType", xc_exception_get_type_method);
+    rt->register_method(XC_TYPE_EXCEPTION, "getStackTrace", xc_exception_get_stack_trace_method);
 }
 
 /* Error comparison functions */

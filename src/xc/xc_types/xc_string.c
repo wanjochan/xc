@@ -13,6 +13,10 @@ static bool string_equal(xc_runtime_t *rt, xc_object_t *a, xc_object_t *b);
 static int string_compare(xc_runtime_t *rt, xc_object_t *a, xc_object_t *b);
 static xc_val string_creator(int type, va_list args);
 
+/* String method implementations */
+static xc_val string_concat_method(xc_val obj, xc_val arg);
+static xc_val string_length_method(xc_val obj, xc_val arg);
+
 /* String object structure */
 typedef struct {
     xc_object_t base;  /* Must be first */
@@ -76,6 +80,10 @@ void xc_register_string_type(xc_runtime_t *rt) {
     /* 注册类型 */
     int type_id = xc_register_type("string", &string_type);
     xc_string_type = &string_type;
+    
+    /* 注册字符串方法 */
+    rt->register_method(XC_TYPE_STRING, "concat", string_concat_method);
+    rt->register_method(XC_TYPE_STRING, "length", string_length_method);
 }
 
 /* Internal helper functions */
@@ -179,6 +187,16 @@ xc_object_t *xc_string_concat(xc_runtime_t *rt, xc_object_t *a, xc_object_t *b) 
     result->data[len_a + len_b] = '\0';
     
     return (xc_object_t *)result;
+}
+
+/* String method implementations */
+static xc_val string_concat_method(xc_val obj, xc_val arg) {
+    return (xc_val)xc_string_concat(NULL, (xc_object_t *)obj, (xc_object_t *)arg);
+}
+
+static xc_val string_length_method(xc_val obj, xc_val arg) {
+    size_t len = xc_string_length(NULL, (xc_object_t *)obj);
+    return (xc_val)xc_number_create(NULL, (double)len);
 }
 
 /* Type conversion */

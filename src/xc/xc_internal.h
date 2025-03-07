@@ -73,6 +73,12 @@ void xc_gc_print_stats(xc_runtime_t *rt);
 void xc_gc_release_object(xc_val obj);
 void xc_release(xc_val obj);
 
+/* 分配原始内存并处理GC相关逻辑 */
+void* xc_gc_allocate_raw_memory(size_t size, int type_id);
+
+/* 根据类型ID获取类型处理器 */
+xc_type_lifecycle_t* get_type_handler(int type_id);
+
 /* 
  * Function pointer type for XC functions
  */
@@ -371,6 +377,10 @@ char *xc_stack_trace_to_string(xc_runtime_t *rt, xc_stack_trace_t *stack_trace);
 void xc_exception_rethrow(xc_runtime_t *rt);
 void xc_exception_clear(xc_runtime_t *rt);
 
+/* 未捕获异常处理器API */
+void xc_set_uncaught_exception_handler(xc_runtime_t *rt, xc_val handler);
+xc_val xc_get_uncaught_exception_handler(xc_runtime_t *rt);
+
 /* Pre-defined exception creation helpers */
 xc_object_t *xc_exception_create_error(xc_runtime_t *rt, const char *message);
 xc_object_t *xc_exception_create_syntax_error(xc_runtime_t *rt, const char *message);
@@ -558,6 +568,9 @@ static __thread struct {
     size_t gray_capacity;   /* 灰色对象栈容量 */
     size_t allocation_count; /* 分配计数，用于触发自动GC */
 } _thread_gc = {0};
+
+void xc_gc_thread_init(void);
+void xc_gc_thread_exit(void);
 
 /* 全局状态结构 */
 typedef struct {
