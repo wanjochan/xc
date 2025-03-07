@@ -61,7 +61,7 @@ typedef struct {
     xc_cleaner_func cleaner;          /* 清理函数 */
     xc_creator_func creator;          /* 创建函数 */
     xc_destroy_func destroyer;        /* 销毁函数 */
-    xc_allocator_func allocator;      /* 内存分配函数 */
+    //xc_allocator_func allocator;      /* 内存分配函数 */
     xc_marker_func marker;            /* GC标记函数 */
     const char *name;
     bool (*equal)(xc_val a, xc_val b);

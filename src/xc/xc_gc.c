@@ -1,6 +1,12 @@
 #include "xc.h"
 #include "xc_internal.h"
 
+// /* Garbage collector color marks for tri-color marking */
+// #define XC_GC_WHITE      0   /* Object is not reachable (candidate for collection) */
+// #define XC_GC_GRAY       1   /* Object is reachable but its children haven't been scanned */
+// #define XC_GC_BLACK      2   /* Object is reachable and its children have been scanned */
+// #define XC_GC_PERMANENT  3   /* Object is permanently reachable (never collected) */
+
 void xc_gc_thread_init_auto(void) {
     // /*
     // if (_thread_gc.initialized) {

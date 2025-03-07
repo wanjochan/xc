@@ -53,46 +53,49 @@ static xc_val alloc_object(int type, ...) {
     
     /* 分配对象内存 */
     xc_header_t* header;
-    if (entry->lifecycle.allocator) {
-        // 使用类型特定的分配器
-        header = (xc_header_t*)entry->lifecycle.allocator(size + sizeof(xc_header_t));
-    } else {
+    // if (entry->lifecycle.allocator) {
+    //     // 使用类型特定的分配器
+    //     header = (xc_header_t*)entry->lifecycle.allocator(size + sizeof(xc_header_t));
+    // } else {
+    //     // 使用 GC 模块的内存分配函数
+    //     header = (xc_header_t*)xc_gc_allocate_raw_memory(size + sizeof(xc_header_t), type);
+    // }
         // 使用 GC 模块的内存分配函数
         header = (xc_header_t*)xc_gc_allocate_raw_memory(size + sizeof(xc_header_t), type);
-    }
     
     if (!header) {
         return NULL;
     }
     
-    /* 如果使用了自定义分配器，需要初始化 header 字段 */
-    if (entry->lifecycle.allocator) {
-        /* 初始化对象头 */
-        header->type = type;
-        header->flags = 0;
-        header->ref_count = 1;
-        header->size = size + sizeof(xc_header_t);
-        header->type_name = entry->name;
-        header->color = XC_GC_WHITE;
+    // /* 如果使用了自定义分配器，需要初始化 header 字段 */
+    // if (entry->lifecycle.allocator) {
+    //     /* 初始化对象头 */
+    //     header->type = type;
+    //     header->flags = 0;
+    //     header->ref_count = 1;
+    //     header->size = size + sizeof(xc_header_t);
+    //     header->type_name = entry->name;
+    //     header->color = XC_GC_WHITE;
 
-        // /*
-        // header->next_gc = _thread_gc.gc_first;
+    //     // /*
+    //     // header->next_gc = _thread_gc.gc_first;
         
-        // _thread_gc.gc_first = header;
-        // _thread_gc.total_memory += header->size;
+    //     // _thread_gc.gc_first = header;
+    //     // _thread_gc.total_memory += header->size;
         
-        // /* 增加分配计数 */
-        // _thread_gc.allocation_count++;
+    //     // /* 增加分配计数 */
+    //     // _thread_gc.allocation_count++;
         
-        // /* 检查是否需要进行垃圾回收 */
-        // if (_thread_gc.allocation_count > 1000 || _thread_gc.total_memory > _thread_gc.gc_threshold) {
-        //     xc_gc();
-        // }
-        // */
-    } else {
-        // 如果使用的是 xc_gc_allocate_raw_memory，只需设置类型特定的字段
-        header->type_name = entry->name;
-    }
+    //     // /* 检查是否需要进行垃圾回收 */
+    //     // if (_thread_gc.allocation_count > 1000 || _thread_gc.total_memory > _thread_gc.gc_threshold) {
+    //     //     xc_gc();
+    //     // }
+    //     // */
+    // } else {
+    //     // 如果使用的是 xc_gc_allocate_raw_memory，只需设置类型特定的字段
+    //     header->type_name = entry->name;
+    // }
+    header->type_name = entry->name;
     
     /* 计算对象部分的指针 */
     void* obj = XC_OBJECT(header);
