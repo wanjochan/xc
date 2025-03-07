@@ -106,9 +106,12 @@ void xc_register_function_type(xc_runtime_t *rt) {
 
 /* Create a function object */
 xc_object_t *xc_function_create(xc_runtime_t *rt, xc_function_ptr_t fn, xc_object_t *closure) {
+    printf("DEBUG: xc_function_create 被调用，fn=%p, closure=%p\n", fn, closure);
+    
     /* 分配内存 */
     xc_function_t *obj = (xc_function_t *)xc_gc_alloc(rt, sizeof(xc_function_t), XC_TYPE_FUNC);
     if (!obj) {
+        printf("DEBUG: xc_function_create 失败，内存分配失败\n");
         return NULL;
     }
     
@@ -117,6 +120,8 @@ xc_object_t *xc_function_create(xc_runtime_t *rt, xc_function_ptr_t fn, xc_objec
     obj->handler = fn;
     obj->closure = closure;
     obj->this_obj = NULL;
+    
+    printf("DEBUG: xc_function_create 成功，返回对象=%p，handler=%p\n", obj, fn);
     
     return (xc_object_t *)obj;
 }

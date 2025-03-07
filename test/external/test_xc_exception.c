@@ -15,57 +15,85 @@ static int catch_handler_called = 0;
 static int finally_handler_called = 0;
 
 /* Function that throws an exception */
-static xc_val throw_exception_func(xc_val self, xc_val args) {
-    printf("Throwing exception...\n");
+static xc_val throw_exception_func(xc_val self, xc_val args, int argc, xc_val* argv) {
+    printf("DEBUG: throw_exception_func 被调用，self=%p, args=%p, argc=%d\n", self, args, argc);
     
-    // Create an error object
+    // 创建一个异常对象
     xc_val error = xc.create(XC_TYPE_EXCEPTION, "Test exception");
+    printf("DEBUG: 创建异常对象 error=%p\n", error);
     
-    // Throw the exception
+    // 抛出异常
+    printf("DEBUG: 准备抛出异常\n");
     xc.throw(error);
     
-    // This should not be reached
-    printf("ERROR: Code after throw was executed!\n");
+    // 这里不应该被执行到，因为 throw 会跳转到异常处理器
+    printf("ERROR: throw_exception_func 抛出异常后继续执行\n");
     return NULL;
 }
 
 /* Catch handler function */
-static xc_val catch_handler(xc_val self, xc_val error) {
-    printf("Catch handler called with error\n");
+static xc_val catch_handler(xc_val self, xc_val args, int argc, xc_val* argv) {
+    printf("DEBUG: catch_handler 被调用，self=%p, args=%p, argc=%d\n", self, args, argc);
+    
+    // 设置标志，表示 catch 处理器被调用
     catch_handler_called = 1;
-    return NULL;
+    
+    // 获取异常对象
+    if (argc > 0) {
+        xc_val error = argv[0];
+        printf("DEBUG: 捕获到异常 error=%p\n", error);
+    } else {
+        printf("DEBUG: 捕获到异常，但没有参数\n");
+    }
+    
+    // 返回一个值，表示异常已处理
+    return xc.create(XC_TYPE_STRING, "Exception caught");
 }
 
 /* Finally handler function */
-static xc_val finally_handler(xc_val self, xc_val args) {
-    printf("Finally handler called\n");
+static xc_val finally_handler(xc_val self, xc_val args, int argc, xc_val* argv) {
+    printf("DEBUG: finally_handler 被调用，self=%p, args=%p, argc=%d\n", self, args, argc);
+    
+    // 设置标志，表示 finally 处理器被调用
     finally_handler_called = 1;
-    return NULL;
+    
+    // 返回一个值，表示 finally 块已执行
+    return xc.create(XC_TYPE_STRING, "Finally executed");
 }
 
 /* Test basic exception handling */
 void test_exception_basic(void) {
     test_start("Exception Basic Functionality (External)");
     
-    printf("Testing basic exception handling through public API...\n");
+    printf("\n=== 测试基本异常处理 ===\n");
     
-    // Reset global flags
+    // 重置标志
     catch_handler_called = 0;
     finally_handler_called = 0;
     
-    // Create function objects
+    // 创建函数对象
     xc_val throw_func = xc.create(XC_TYPE_FUNC, throw_exception_func);
     xc_val catch_func = xc.create(XC_TYPE_FUNC, catch_handler);
     xc_val finally_func = xc.create(XC_TYPE_FUNC, finally_handler);
     
-    // Execute try-catch-finally
-    xc.try_catch_finally(throw_func, catch_func, finally_func);
+    printf("DEBUG: 创建函数对象 throw_func=%p, catch_func=%p, finally_func=%p\n", 
+           throw_func, catch_func, finally_func);
     
-    // Verify handlers were called
+    // 使用 XC 的异常处理机制
+    printf("DEBUG: 调用 try_catch_finally\n");
+    xc_val result = xc.try_catch_finally(throw_func, catch_func, finally_func);
+    
+    printf("DEBUG: try_catch_finally 返回结果 result=%p\n", result);
+    
+    // 检查 catch 和 finally 处理器是否被调用
+    printf("DEBUG: catch_handler_called=%d, finally_handler_called=%d\n", 
+           catch_handler_called, finally_handler_called);
+    
+    // 验证结果
     TEST_ASSERT(catch_handler_called == 1, "Catch handler was not called");
     TEST_ASSERT(finally_handler_called == 1, "Finally handler was not called");
     
-    printf("Exception test completed successfully.\n");
+    printf("=== 基本异常处理测试通过 ===\n\n");
     
     test_end("Exception Basic Functionality (External)");
 }

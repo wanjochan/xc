@@ -21,50 +21,54 @@ static xc_gc_context_t *xc_gc_get_context(xc_runtime_t *rt) {
 
 /* Initialize the garbage collector for thread-local context */
 void xc_gc_init_auto(xc_runtime_t *rt, const xc_gc_config_t *config) {
-    // 使用线程本地变量
-    static __thread xc_gc_context_t *gc = NULL;
-    if (gc) {
+    // 使用全局定义的线程本地变量
+    if (xc_gc_context) {
         // GC already initialized for this thread
         return;
     }
     
     // 创建 GC 上下文
-    gc = (xc_gc_context_t *)malloc(sizeof(xc_gc_context_t));
-    if (!gc) {
+    xc_gc_context = (xc_gc_context_t *)malloc(sizeof(xc_gc_context_t));
+    if (!xc_gc_context) {
         fprintf(stderr, "Failed to allocate GC context for thread\n");
         return;
     }
     
     // 初始化 GC 上下文
-    memset(gc, 0, sizeof(xc_gc_context_t));
+    memset(xc_gc_context, 0, sizeof(xc_gc_context_t));
     
     // 设置配置
     if (config) {
-        gc->config = *config;
+        xc_gc_context->config = *config;
     } else {
         // 默认配置
-        gc->config.initial_heap_size = 1024 * 1024; // 1MB
-        gc->config.max_heap_size = 1024 * 1024 * 1024; // 1GB
-        gc->config.growth_factor = 1.5;
-        gc->config.gc_threshold = 0.75;
-        gc->config.max_alloc_before_gc = 10000;
+        xc_gc_context->config.initial_heap_size = 1024 * 1024; // 1MB
+        xc_gc_context->config.max_heap_size = 1024 * 1024 * 1024; // 1GB
+        xc_gc_context->config.growth_factor = 1.5;
+        xc_gc_context->config.gc_threshold = 0.75;
+        xc_gc_context->config.max_alloc_before_gc = 10000;
     }
     
-    // 初始化根集合
-    gc->roots = NULL;
-    gc->root_count = 0;
-    gc->root_capacity = 0;
+    // 初始化堆
+    xc_gc_context->heap_size = xc_gc_context->config.initial_heap_size;
+    xc_gc_context->used_memory = 0;
+    xc_gc_context->allocation_count = 0;
+    xc_gc_context->gc_cycles = 0;
+    xc_gc_context->total_allocated = 0;
+    xc_gc_context->total_freed = 0;
+    xc_gc_context->enabled = true;
     
     // 初始化对象列表
-    gc->white_list = NULL;
-    gc->gray_list = NULL;
-    gc->black_list = NULL;
+    xc_gc_context->white_list = NULL;
+    xc_gc_context->gray_list = NULL;
+    xc_gc_context->black_list = NULL;
+    xc_gc_context->roots = NULL;
+    xc_gc_context->root_count = 0;
+    xc_gc_context->root_capacity = 0;
     
-    // 启用 GC
-    gc->enabled = true;
+    // 设置到运行时 - 这里不需要设置，因为 xc_gc_context 是全局变量
     
-    // 保存线程本地 GC 上下文
-    xc_gc_context = gc;
+    printf("DEBUG: GC initialized for thread, context=%p\n", xc_gc_context);
 }
 
 /* Shutdown the garbage collector */
@@ -273,12 +277,17 @@ xc_object_t *xc_gc_alloc(xc_runtime_t *rt, size_t size, int type_id) {
         xc_gc_run(rt);
     }
     
-    // 分配内存
-    xc_object_t *obj = (xc_object_t *)malloc(size);
-    if (!obj) {
+    // 分配内存 - 确保使用新的内存地址
+    void *memory = malloc(size);
+    if (!memory) {
         fprintf(stderr, "Failed to allocate object of size %zu\n", size);
         return NULL;
     }
+    
+    // 转换为对象指针
+    xc_object_t *obj = (xc_object_t *)memory;
+    
+    printf("DEBUG: xc_gc_alloc 分配内存 %p，大小 %zu，类型 %d\n", obj, size, type_id);
     
     // 初始化对象
     memset(obj, 0, size);
@@ -451,21 +460,20 @@ void xc_release(xc_val obj) {
     xc_gc_release_object(obj);
 }
 
-/* 分配原始内存并处理GC相关逻辑 */
-void* xc_gc_allocate_raw_memory(size_t size, int type_id) {
-    xc_gc_init_auto(&xc, NULL);//TODO config from global one...
-    // 分配内存
-    void* memory = malloc(size);
-    if (!memory) return NULL;
+// /* 分配原始内存并处理GC相关逻辑 */
+// void* xc_gc_allocate_raw_memory(size_t size, int type_id) {
+//     xc_gc_init_auto(&xc, NULL);//TODO config from global one...
+//     // 分配内存
+//     void* memory = malloc(size);
+//     if (!memory) return NULL;
     
-    // 初始化 GC 相关字段
-    xc_header_t* header = (xc_header_t*)memory;
-    header->size = size;
-    header->type = type_id;  // 使用type而不是type_id以匹配原有代码
-    header->flags = 0;
-    header->color = XC_GC_WHITE;
-    header->ref_count = 1;  // 初始引用计数为1
+//     // 初始化 GC 相关字段
+//     xc_header_t* header = (xc_header_t*)memory;
+//     header->size = size;
+//     header->type = type_id;  // 使用type而不是type_id以匹配原有代码
+//     header->flags = 0;
+//     header->color = XC_GC_WHITE;
+//     header->ref_count = 1;  // 初始引用计数为1
 
-    return memory;
-} 
-
+//     return memory;
+// } 

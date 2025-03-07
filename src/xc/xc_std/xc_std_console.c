@@ -30,10 +30,10 @@ static char* format_message(int argc, xc_val* argv) {
         if (argv[i]) {
             item_str = xc.call(argv[i], "toString");
             if (!item_str) {
-                item_str = xc.create(XC_TYPE_STRING, "<unknown>");
+                item_str = xc_new(XC_TYPE_STRING, "<unknown>");
             }
         } else {
-            item_str = xc.create(XC_TYPE_STRING, "null");
+            item_str = xc_new(XC_TYPE_STRING, "null");
         }
         
         const char* str = xc_string_value(&xc, item_str);
@@ -110,7 +110,7 @@ static xc_val console_time(xc_val self, int argc, xc_val* argv, xc_val closure) 
     
     /* 存储当前时间到label属性中 */
     clock_t start_time = clock();
-    xc_val time_value = xc.create(XC_TYPE_NUMBER, (double)start_time);
+    xc_val time_value = xc_new(XC_TYPE_NUMBER, (double)start_time);
     xc_object_set(&xc, self, label, time_value);
     xc_release(time_value);
     
@@ -147,26 +147,26 @@ static xc_val console_timeEnd(xc_val self, int argc, xc_val* argv, xc_val closur
 
 /* 创建Console对象 */
 static xc_val create_console_object(void) {
-    xc_val obj = xc.create(XC_TYPE_OBJECT);
+    xc_val obj = xc_new(XC_TYPE_OBJECT);
     
     /* 添加方法 */
-    xc_val log_func = xc.create(XC_TYPE_FUNC, console_log, -1, NULL);
+    xc_val log_func = xc_new(XC_TYPE_FUNC, console_log, -1, NULL);
     xc_object_set(&xc, obj, "log", log_func);
     xc_release(log_func);
     
-    xc_val error_func = xc.create(XC_TYPE_FUNC, console_error, -1, NULL);
+    xc_val error_func = xc_new(XC_TYPE_FUNC, console_error, -1, NULL);
     xc_object_set(&xc, obj, "error", error_func);
     xc_release(error_func);
     
-    xc_val warn_func = xc.create(XC_TYPE_FUNC, console_warn, -1, NULL);
+    xc_val warn_func = xc_new(XC_TYPE_FUNC, console_warn, -1, NULL);
     xc_object_set(&xc, obj, "warn", warn_func);
     xc_release(warn_func);
     
-    xc_val time_func = xc.create(XC_TYPE_FUNC, console_time, 1, NULL);
+    xc_val time_func = xc_new(XC_TYPE_FUNC, console_time, 1, NULL);
     xc_object_set(&xc, obj, "time", time_func);
     xc_release(time_func);
     
-    xc_val timeEnd_func = xc.create(XC_TYPE_FUNC, console_timeEnd, 1, NULL);
+    xc_val timeEnd_func = xc_new(XC_TYPE_FUNC, console_timeEnd, 1, NULL);
     xc_object_set(&xc, obj, "timeEnd", timeEnd_func);
     xc_release(timeEnd_func);
     

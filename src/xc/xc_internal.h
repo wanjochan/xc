@@ -73,8 +73,8 @@ void xc_gc_print_stats(xc_runtime_t *rt);
 void xc_gc_release_object(xc_val obj);
 void xc_release(xc_val obj);
 
-/* 分配原始内存并处理GC相关逻辑 */
-void* xc_gc_allocate_raw_memory(size_t size, int type_id);
+// /* 分配原始内存并处理GC相关逻辑 */
+// void* xc_gc_allocate_raw_memory(size_t size, int type_id);
 
 /* 根据类型ID获取类型处理器 */
 xc_type_lifecycle_t* get_type_handler(int type_id);
@@ -577,7 +577,7 @@ typedef struct {
     int type;           /* 类型ID */
     unsigned int flags;  /* 标志位 */
     int ref_count;       /* 引用计数 */
-    void* next_gc;       /* GC链表下一项 */
+    // void* next_gc;       /* GC链表下一项 */
     size_t size;         /* 对象大小（包括头部） */
     const char* type_name; /* 类型名称（便于调试） */
     unsigned char color;   /* 对象颜色，用于三色标记法 */
@@ -622,12 +622,14 @@ static void thread_cleanup(void);
 static void throw_internal(xc_val error, bool allow_rethrow);
 static void throw(xc_val error);
 static void throw_with_rethrow(xc_val error);
-static xc_val create(int type, ...);
-static int type_of(xc_val val);
-static int is(xc_val val, int type);
-static xc_val invoke(xc_val func, int argc, ...);
+
+static xc_val xc_new(int type, ...);
+static int xc_typeof(xc_val val);
+static int xc_is(xc_val val, int type);
+static xc_val xc_invoke(xc_val func, int argc, ...);
 static xc_val xc_dot(xc_val obj, const char* key, ...);
-static xc_val call(xc_val obj, const char* method, ...);
+static xc_val xc_call(xc_val obj, const char* method, ...);
+
 static void gc_mark_object(xc_val obj);
 static void gc_mark_stack(void);
 static void gc_mark_roots(void);

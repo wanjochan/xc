@@ -73,9 +73,10 @@ typedef struct {
 /* 运行时接口结构 */
 typedef struct xc_runtime_t {
     /* type */
-    xc_val (*alloc_object)(int type, ...);
-    xc_val (*create)(int type, ...);
-    int (*type_of)(xc_val obj);
+    // xc_val (*alloc_object)(int type, ...);
+    xc_val (*new)(int type, ...);
+    //TODO delete(xc_val);
+    int (*type_of)(xc_val obj); //"typeof"是关键词不能用
     int (*is)(xc_val obj, int type);
 
     int (*register_type)(const char* name, xc_type_lifecycle_t* lifecycle);
