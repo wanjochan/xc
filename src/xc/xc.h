@@ -41,11 +41,6 @@
 #define XC_TYPE_EXTENSION_BEGIN 128
 #define XC_TYPE_EXTENSION_END   255
 
-/* 对象颜色状态 - 用于三色标记法 */
-#define XC_COLOR_WHITE       0  /* 未标记，可能是垃圾 */
-#define XC_COLOR_GRAY        1  /* 已标记但引用未处理 */
-#define XC_COLOR_BLACK       2  /* 已标记且引用已处理 */
-
 /* 胖指针 值类型 */
 typedef void* xc_val;
 
@@ -105,7 +100,5 @@ typedef struct xc_runtime_t {
 
 /* xc global instance */
 extern xc_runtime_t xc;
-
-#define XC_REQUIRES(x) typeof(x) *const xc_requires_##x = &(x)
 
 #endif /* XC_H */

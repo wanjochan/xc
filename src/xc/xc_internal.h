@@ -6,6 +6,7 @@
 #define XC_INTERNAL_H
 
 #include "xc.h"
+#define XC_REQUIRES(x) typeof(x) *const xc_requires_##x = &(x)
 
 /* Forward declarations */
 typedef struct xc_object xc_object_t;

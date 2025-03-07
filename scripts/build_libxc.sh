@@ -43,7 +43,7 @@ SOURCE_FILES=(
     
     # 核心运行时
     "${SRC_DIR}/xc/xc.c"
-    # "${SRC_DIR}/xc/xc_gc.c"  # 已合并到 xc.c 中
+    "${SRC_DIR}/xc/xc_gc.c"
     "${SRC_DIR}/xc/xc_types/xc_exception.c"
     "${SRC_DIR}/xc/xc_types/xc_null.c"
     "${SRC_DIR}/xc/xc_types/xc_boolean.c"

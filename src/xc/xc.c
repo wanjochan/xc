@@ -79,11 +79,11 @@ static void __attribute__((destructor)) thread_cleanup(void) {
 
 /* 将对象标记为灰色并加入灰色栈 */
 static void gc_mark_gray(xc_header_t* header) {
-    if (!header || header->color != XC_COLOR_WHITE) {
+    if (!header || header->color != XC_GC_WHITE) {
         return;
     }
     
-    header->color = XC_COLOR_GRAY;
+    header->color = XC_GC_GRAY;
     
     /* 确保灰色栈有足够空间 */
     if (_thread_gc.gray_count >= _thread_gc.gray_capacity) {
@@ -112,7 +112,7 @@ static void gc_scan_gray(void) {
         }
         
         /* 标记为黑色 */
-        header->color = XC_COLOR_BLACK;
+        header->color = XC_GC_BLACK;
     }
 }
 
@@ -182,7 +182,7 @@ static void gc_sweep(void) {
     while (current) {
         xc_header_t* next = current->next_gc;
         
-        if (current->color == XC_COLOR_WHITE) {
+        if (current->color == XC_GC_WHITE) {
             /* 对象未被标记，需要回收 */
             if (prev) {
                 prev->next_gc = next;
@@ -203,7 +203,7 @@ static void gc_sweep(void) {
             current = next;
         } else {
             /* 重置对象颜色为白色，为下次GC做准备 */
-            current->color = XC_COLOR_WHITE;
+            current->color = XC_GC_WHITE;
             prev = current;
             current = next;
         }
@@ -293,7 +293,7 @@ static xc_val alloc_object(int type, ...) {
     header->next_gc = _thread_gc.gc_first;
     header->size = size + sizeof(xc_header_t);
     header->type_name = entry->name;
-    header->color = XC_COLOR_WHITE;
+    header->color = XC_GC_WHITE;
     
     _thread_gc.gc_first = header;
     _thread_gc.total_memory += header->size;
@@ -1298,12 +1298,12 @@ void xc_gc_shutdown(xc_runtime_t *rt) {
 
 /* Mark phase of GC - traverse object and mark all reachable objects */
 void xc_gc_mark(xc_runtime_t *rt, xc_object_t *obj) {
-    if (!obj || obj->gc_color != XC_COLOR_WHITE) {
+    if (!obj || obj->gc_color != XC_GC_WHITE) {
         return;  // 已经标记过或不需要标记
     }
     
     // 将对象标记为灰色
-    obj->gc_color = XC_COLOR_GRAY;
+    obj->gc_color = XC_GC_GRAY;
     
     // 获取GC上下文
     xc_gc_context_t *gc = (xc_gc_context_t *)xc_gc_context;
@@ -1336,7 +1336,7 @@ static void xc_gc_process_gray_list(xc_runtime_t *rt) {
     
     while (obj) {
         // 将对象标记为黑色
-        obj->gc_color = XC_COLOR_BLACK;
+        obj->gc_color = XC_GC_BLACK;
         
         // 将对象从灰色列表移到黑色列表
         xc_object_t *next = obj->gc_next;
@@ -1366,7 +1366,7 @@ static size_t xc_gc_sweep(xc_runtime_t *rt) {
         xc_object_t *next = curr->gc_next;
         
         // 如果对象是白色的，释放它
-        if (curr->gc_color == XC_COLOR_WHITE) {
+        if (curr->gc_color == XC_GC_WHITE) {
             // 调用类型特定的释放函数
             xc_type_lifecycle_t *type_handler = get_type_handler(curr->type_id);
             if (type_handler && type_handler->destroyer) {
@@ -1422,7 +1422,7 @@ static void xc_gc_reset_colors(xc_runtime_t *rt) {
         }
         
         /* Reset color to white */
-        obj->gc_color = XC_COLOR_WHITE;
+        obj->gc_color = XC_GC_WHITE;
         
         /* Add to white list */
         obj->gc_next = gc->white_list;
@@ -1495,7 +1495,7 @@ xc_object_t *xc_gc_alloc(xc_runtime_t *rt, size_t size, int type_id) {
     memset(obj, 0, size);
     obj->size = size;
     obj->ref_count = 1;
-    obj->gc_color = XC_COLOR_WHITE;
+    obj->gc_color = XC_GC_WHITE;
     
     // 设置类型ID
     obj->type_id = type_id;
@@ -1536,7 +1536,7 @@ void xc_gc_free(xc_runtime_t *rt, xc_object_t *obj) {
 /* Mark an object as permanently reachable */
 void xc_gc_mark_permanent(xc_runtime_t *rt, xc_object_t *obj) {
     if (!obj) return;
-    obj->gc_color = XC_COLOR_BLACK;
+    obj->gc_color = XC_GC_BLACK;
 }
 
 /* Add a reference to an object */
