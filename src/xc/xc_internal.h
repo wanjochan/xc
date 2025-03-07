@@ -16,6 +16,31 @@ typedef struct xc_runtime_extended xc_runtime_extended_t;
 typedef struct xc_stack_trace xc_stack_trace_t;
 typedef struct xc_exception xc_exception_t;
 
+/* Forward declarations for GC types and functions */
+typedef struct xc_gc_config xc_gc_config_t;
+typedef struct xc_gc_stats xc_gc_stats_t;
+
+/* GC function declarations */
+void xc_gc_init(xc_runtime_t *rt, const xc_gc_config_t *config);
+void xc_gc_shutdown(xc_runtime_t *rt);
+void xc_gc_run(xc_runtime_t *rt);
+void xc_gc_enable(xc_runtime_t *rt);
+void xc_gc_disable(xc_runtime_t *rt);
+bool xc_gc_is_enabled(xc_runtime_t *rt);
+xc_object_t *xc_gc_alloc(xc_runtime_t *rt, size_t size, int type_id);
+void xc_gc_free(xc_runtime_t *rt, xc_object_t *obj);
+void xc_gc_mark_permanent(xc_runtime_t *rt, xc_object_t *obj);
+void xc_gc_mark(xc_runtime_t *rt, xc_object_t *obj);
+void xc_gc_add_ref(xc_runtime_t *rt, xc_object_t *obj);
+void xc_gc_release(xc_runtime_t *rt, xc_object_t *obj);
+int xc_gc_get_ref_count(xc_runtime_t *rt, xc_object_t *obj);
+void xc_gc_add_root(xc_runtime_t *rt, xc_object_t **root_ptr);
+void xc_gc_remove_root(xc_runtime_t *rt, xc_object_t **root_ptr);
+xc_gc_stats_t xc_gc_get_stats(xc_runtime_t *rt);
+void xc_gc_print_stats(xc_runtime_t *rt);
+void xc_gc_release_object(xc_val obj);
+void xc_release(xc_val obj);
+
 /* 
  * Function pointer type for XC functions
  */

@@ -56,14 +56,6 @@ typedef void (*xc_marker_func)(xc_val obj, void (*mark_func)(xc_val));
 typedef xc_val (*xc_allocator_func)(size_t size);
 typedef xc_val (*xc_method_func)(xc_val self, xc_val arg);
 
-// /* 异常处理器结构 */
-// typedef struct xc_exception_handler {
-//     jmp_buf env;                     /* 保存的环境 */
-//     xc_val catch_func;               /* catch处理器 */
-//     xc_val finally_func;             /* finally处理器 */
-//     struct xc_exception_handler* prev; /* 链接到前一个处理器 */
-// } xc_exception_handler_t;
-
 /* 类型生命周期管理结构 */
 typedef struct {
     xc_initializer_func initializer;  /* 初始化函数 */
@@ -76,38 +68,31 @@ typedef struct {
 
 /* 运行时接口结构 */
 typedef struct xc_runtime_t {
-    // xc_runtime_t *self;//全局单例现在不用搞 self
-
     /* type */
     xc_val (*alloc_object)(int type, ...);
     xc_val (*create)(int type, ...);
     int (*type_of)(xc_val obj);
     int (*is)(xc_val obj, int type);
-    
-    /* 类型管理 */
+
     int (*register_type)(const char* name, xc_type_lifecycle_t* lifecycle);
     int (*get_type_id)(const char* name);
     
-    /* 运行时：原生包装器、调用栈、异常处理 */
+    //runtime, calling stack
     char (*register_method)(int type, const char* func_name, xc_method_func native_func);
     xc_val (*call)(xc_val obj, const char* method, ...);
     xc_val (*dot)(xc_val obj, const char* key, ...);
     xc_val (*invoke)(xc_val func, int argc, ...);
     
-    /* 异常处理 */
+    //exception handling
     xc_val (*try_catch_finally)(xc_val try_func, xc_val catch_func, xc_val finally_func);
     void (*throw)(xc_val error);
     void (*throw_with_rethrow)(xc_val error);
     void (*set_uncaught_exception_handler)(xc_val handler);
     xc_val (*get_current_error)(void);
     void (*clear_error)(void);
-
-    //暂时不隐藏，后面有需求再加 gc_force();    
-    // void (*gc)(void);
-
 } xc_runtime_t;
 
-/* 全局运行时对象单例 */
+/* xc global instance */
 extern xc_runtime_t xc;
 
 #define XC_REQUIRES(x) typeof(x) *const xc_requires_##x = &(x)

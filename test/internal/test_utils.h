@@ -14,7 +14,7 @@
 /* Include internal headers */
 #include "../../src/xc/xc.h"
 #include "../../src/xc/xc_internal.h"
-#include "../../src/xc/xc_gc.h"
+// #include "../../src/xc/xc_gc.h"  // Removed since we've merged it into xc.c
 
 /* Test case structure */
 typedef struct xc_test_case {

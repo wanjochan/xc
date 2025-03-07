@@ -1,8 +1,89 @@
 #include "xc.h"
-#include "xc_gc.h"
 #include "xc_internal.h"
 
+/* Garbage collector color marks for tri-color marking */
+#define XC_GC_WHITE      0   /* Object is not reachable (candidate for collection) */
+#define XC_GC_GRAY       1   /* Object is reachable but its children haven't been scanned */
+#define XC_GC_BLACK      2   /* Object is reachable and its children have been scanned */
+#define XC_GC_PERMANENT  3   /* Object is permanently reachable (never collected) */
 
+/* GC configuration structure */
+typedef struct xc_gc_config {
+    size_t initial_heap_size;   /* Initial size of the heap in bytes */
+    size_t max_heap_size;       /* Maximum size of the heap in bytes */
+    double growth_factor;       /* Heap growth factor when resizing */
+    double gc_threshold;        /* Memory usage threshold to trigger GC */
+    size_t max_alloc_before_gc; /* Maximum number of allocations before forced GC */
+} xc_gc_config_t;
+
+/* Default GC configuration */
+#define XC_GC_DEFAULT_CONFIG { \
+    .initial_heap_size = 1024 * 1024, \
+    .max_heap_size = 1024 * 1024 * 1024, \
+    .growth_factor = 1.5, \
+    .gc_threshold = 0.7, \
+    .max_alloc_before_gc = 10000 \
+}
+
+/* GC statistics structure */
+typedef struct xc_gc_stats {
+    size_t heap_size;           /* Current heap size in bytes */
+    size_t used_memory;         /* Used memory in bytes */
+    size_t total_allocated;     /* Total allocated objects since start */
+    size_t total_freed;         /* Total freed objects since start */
+    size_t gc_cycles;           /* Number of GC cycles */
+    double avg_pause_time_ms;   /* Average GC pause time in milliseconds */
+    double last_pause_time_ms;  /* Last GC pause time in milliseconds */
+} xc_gc_stats_t;
+
+/* Forward declarations of internal type structures */
+typedef struct xc_array_t xc_array_t;
+typedef struct xc_object_data_t xc_object_data_t;
+typedef struct xc_function_t xc_function_t;
+
+/* Internal GC context structure */
+typedef struct xc_gc_context {
+    xc_gc_config_t config;           /* GC configuration */
+    size_t heap_size;                /* Current heap size in bytes */
+    size_t used_memory;              /* Used memory in bytes */
+    size_t allocation_count;         /* Allocations since last GC */
+    size_t total_allocated;          /* Total allocated objects */
+    size_t total_freed;              /* Total freed objects */
+    size_t gc_cycles;                /* Number of GC cycles */
+    double total_pause_time_ms;      /* Total GC pause time in ms */
+    bool enabled;                    /* Whether GC is enabled */
+    
+    /* Root set */
+    xc_object_t ***roots;            /* Array of pointers to root objects */
+    size_t root_count;               /* Number of roots */
+    size_t root_capacity;            /* Capacity of roots array */
+    
+    /* Object lists for tri-color marking */
+    xc_object_t *white_list;         /* White objects (candidates for collection) */
+    xc_object_t *gray_list;          /* Gray objects (reachable but not scanned) */
+    xc_object_t *black_list;         /* Black objects (reachable and scanned) */
+} xc_gc_context_t;
+
+/* Function declarations for GC */
+void xc_gc_init(xc_runtime_t *rt, const xc_gc_config_t *config);
+void xc_gc_shutdown(xc_runtime_t *rt);
+void xc_gc_run(xc_runtime_t *rt);
+void xc_gc_enable(xc_runtime_t *rt);
+void xc_gc_disable(xc_runtime_t *rt);
+bool xc_gc_is_enabled(xc_runtime_t *rt);
+xc_object_t *xc_gc_alloc(xc_runtime_t *rt, size_t size, int type_id);
+void xc_gc_free(xc_runtime_t *rt, xc_object_t *obj);
+void xc_gc_mark_permanent(xc_runtime_t *rt, xc_object_t *obj);
+void xc_gc_mark(xc_runtime_t *rt, xc_object_t *obj);
+void xc_gc_add_ref(xc_runtime_t *rt, xc_object_t *obj);
+void xc_gc_release(xc_runtime_t *rt, xc_object_t *obj);
+int xc_gc_get_ref_count(xc_runtime_t *rt, xc_object_t *obj);
+void xc_gc_add_root(xc_runtime_t *rt, xc_object_t **root_ptr);
+void xc_gc_remove_root(xc_runtime_t *rt, xc_object_t **root_ptr);
+xc_gc_stats_t xc_gc_get_stats(xc_runtime_t *rt);
+void xc_gc_print_stats(xc_runtime_t *rt);
+void xc_gc_release_object(xc_val obj);
+void xc_release(xc_val obj);
 
 /* 错误代码 */
 #define XC_ERR_NONE 0
@@ -24,12 +105,6 @@
 
 /* 函数处理器类型定义 */
 typedef xc_val (*xc_function_handler)(xc_val this_obj, int argc, xc_val* argv, xc_val closure);
-
-// /* 外部函数声明 */
-// extern xc_val xc_function_create(xc_function_handler handler, int arg_count, xc_val closure);
-// extern xc_val xc_function_get_closure(xc_val obj);
-// extern xc_object_t *xc_error_get_stack_trace(xc_runtime_t *rt, xc_object_t *error);
-// extern xc_val xc_function_invoke(xc_val func, xc_val this_obj, int argc, xc_val* argv);
 
 /* 执行栈帧结构 */
 typedef struct xc_stack_frame {
@@ -1158,9 +1233,6 @@ xc_object_t *xc_error_get_stack_trace(xc_runtime_t *rt, xc_object_t *error) {
     return (xc_object_t *)stack_array;
 }
 
-// void xc_auto_init(void);
-// void xc_auto_shutdown(void);
-
 /* 按顺序初始化所有基本类型 */
 void xc_types_init(void) {
     xc_register_string_type(&xc);
@@ -1320,4 +1392,501 @@ bool xc_strict_equal(xc_runtime_t *rt, xc_object_t *a, xc_object_t *b) {
 xc_val xc_function_invoke(xc_val func, xc_val this_obj, int argc, xc_val* argv) {
     /* This is a stub implementation */
     return NULL;
+}
+
+/* Get GC context from runtime */
+static xc_gc_context_t *xc_gc_get_context(xc_runtime_t *rt) {
+    xc_runtime_extended_t *ext_rt = (xc_runtime_extended_t *)rt;
+    return (xc_gc_context_t *)ext_rt->gc_context;
+}
+
+/* Initialize the garbage collector */
+void xc_gc_init(xc_runtime_t *rt, const xc_gc_config_t *config) {
+    xc_runtime_extended_t *ext_rt = (xc_runtime_extended_t *)rt;
+    
+    /* Allocate and initialize GC context */
+    xc_gc_context_t *gc = (xc_gc_context_t *)malloc(sizeof(xc_gc_context_t));
+    if (!gc) {
+        fprintf(stderr, "Failed to allocate GC context\n");
+        exit(1);
+    }
+    
+    /* Copy configuration or use defaults */
+    if (config) {
+        memcpy(&gc->config, config, sizeof(xc_gc_config_t));
+    } else {
+        xc_gc_config_t default_config = XC_GC_DEFAULT_CONFIG;
+        memcpy(&gc->config, &default_config, sizeof(xc_gc_config_t));
+    }
+    
+    /* Initialize context fields */
+    gc->heap_size = 0;
+    gc->used_memory = 0;
+    gc->allocation_count = 0;
+    gc->total_allocated = 0;
+    gc->total_freed = 0;
+    gc->gc_cycles = 0;
+    gc->total_pause_time_ms = 0;
+    gc->enabled = true;
+    
+    /* Initialize root set */
+    gc->roots = NULL;
+    gc->root_count = 0;
+    gc->root_capacity = 0;
+    
+    /* Initialize object lists */
+    gc->white_list = NULL;
+    gc->gray_list = NULL;
+    gc->black_list = NULL;
+    
+    /* Store context in runtime */
+    ext_rt->gc_context = gc;
+}
+
+/* Shutdown the garbage collector */
+void xc_gc_shutdown(xc_runtime_t *rt) {
+    xc_runtime_extended_t *ext_rt = (xc_runtime_extended_t *)rt;
+    xc_gc_context_t *gc = xc_gc_get_context(rt);
+    
+    /* Run a final GC to free all objects */
+    xc_gc_run(rt);
+    
+    /* Free roots array */
+    free(gc->roots);
+    
+    /* Free GC context */
+    free(gc);
+    ext_rt->gc_context = NULL;
+}
+
+/* Mark phase of GC - traverse object and mark all reachable objects */
+void xc_gc_mark(xc_runtime_t *rt, xc_object_t *obj) {
+    if (!obj) return;
+    
+    /* Object is already marked, skip it */
+    if (obj->gc_color == XC_GC_GRAY || obj->gc_color == XC_GC_BLACK) return;
+    
+    /* Mark object as gray (reachable but children not scanned) */
+    obj->gc_color = XC_GC_GRAY;
+    
+    /* Add to gray list for processing */
+    xc_gc_context_t *gc = xc_gc_get_context(rt);
+    obj->gc_next = gc->gray_list;
+    gc->gray_list = obj;
+}
+
+/* Process gray list and mark all reachable objects */
+static void xc_gc_process_gray_list(xc_runtime_t *rt) {
+    xc_gc_context_t *gc = xc_gc_get_context(rt);
+    
+    /* Process all objects in the gray list */
+    while (gc->gray_list) {
+        /* Get and remove the first gray object */
+        xc_object_t *obj = gc->gray_list;
+        gc->gray_list = obj->gc_next;
+        
+        /* Mark object as black (fully processed) */
+        obj->gc_color = XC_GC_BLACK;
+        
+        /* Add to black list */
+        obj->gc_next = gc->black_list;
+        gc->black_list = obj;
+        
+        /* Get extended runtime */
+        xc_runtime_extended_t *ext_rt = (xc_runtime_extended_t *)rt;
+
+        /* Call type-specific mark function if provided */
+        if (obj->type && obj->type->mark) {
+            obj->type->mark(rt, obj);
+        } else {
+            /* Default marking behavior for objects without type-specific mark function */
+            if (obj->type == ext_rt->array_type) {
+                /* Mark array elements */
+                xc_array_t *arr = (xc_array_t *)obj;
+                for (size_t i = 0; i < arr->length; i++) {
+                    if (arr->items[i]) {
+                        xc_gc_mark(rt, arr->items[i]);
+                    }
+                }
+            } else if (obj->type == ext_rt->object_type) {
+                /* Mark object properties */
+                xc_object_data_t *object = (xc_object_data_t *)obj;
+                for (size_t i = 0; i < object->count; i++) {
+                    if (object->properties[i].key) {
+                        xc_gc_mark(rt, object->properties[i].key);
+                    }
+                    if (object->properties[i].value) {
+                        xc_gc_mark(rt, object->properties[i].value);
+                    }
+                }
+                /* Mark prototype */
+                if (object->prototype) {
+                    xc_gc_mark(rt, object->prototype);
+                }
+            } else if (obj->type == ext_rt->function_type) {
+                /* Mark function's closure variables */
+                xc_function_t *func = (xc_function_t *)obj;
+                if (func->closure) {
+                    xc_gc_mark(rt, func->closure);
+                }
+                if (func->this_obj) {
+                    xc_gc_mark(rt, func->this_obj);
+                }
+            }
+        }
+    }
+}
+
+/* Sweep phase of GC - detect and free unreachable objects */
+static size_t xc_gc_sweep(xc_runtime_t *rt) {
+    xc_gc_context_t *gc = xc_gc_get_context(rt);
+    size_t freed_count = 0;
+    
+    /* First pass: find objects with only internal references */
+    xc_object_t *curr = gc->white_list;
+    while (curr) {
+        if (curr->gc_color == XC_GC_WHITE && curr->ref_count > 0) {
+            /* Object has external references, skip it */
+            curr->gc_color = XC_GC_BLACK;
+        }
+        curr = curr->gc_next;
+    }
+    
+    /* Second pass: process white objects (unreachable or only internal refs) */
+    xc_object_t *prev = NULL;
+    curr = gc->white_list;
+    
+    while (curr) {
+        xc_object_t *next = curr->gc_next;
+        
+        /* Skip objects that were marked or have external references */
+        if (curr->gc_color != XC_GC_WHITE) {
+            prev = curr;
+            curr = next;
+            continue;
+        }
+        
+        /* Object is either unreachable or part of a cycle */
+        
+        /* Call type-specific cleanup if available */
+        if (curr->type && curr->type->free) {
+            curr->type->free(rt, curr);
+        }
+        
+        /* Update pointers in the white list */
+        if (prev) {
+            prev->gc_next = next;
+        } else {
+            gc->white_list = next;
+        }
+        
+        /* Update statistics */
+        gc->used_memory -= curr->size;
+        gc->total_freed++;
+        freed_count++;
+        
+        /* Clear any remaining references */
+        curr->ref_count = 0;
+        
+        /* Free the memory */
+        free(curr);
+        
+        /* Move to next object */
+        curr = next;
+    }
+    
+    return freed_count;
+}
+
+/* Mark roots and process object graph */
+static void xc_gc_mark_roots(xc_runtime_t *rt) {
+    xc_gc_context_t *gc = xc_gc_get_context(rt);
+    
+    /* Mark all roots */
+    for (size_t i = 0; i < gc->root_count; i++) {
+        xc_object_t *root = *gc->roots[i];
+        if (root) {
+            xc_gc_mark(rt, root);
+        }
+    }
+}
+
+/* Reset object colors for next GC cycle */
+static void xc_gc_reset_colors(xc_runtime_t *rt) {
+    xc_gc_context_t *gc = xc_gc_get_context(rt);
+    
+    /* Move all black objects to white list */
+    while (gc->black_list) {
+        xc_object_t *obj = gc->black_list;
+        gc->black_list = obj->gc_next;
+        
+        /* Skip permanent objects */
+        if (obj->gc_color == XC_GC_PERMANENT) {
+            continue;
+        }
+        
+        /* Reset color to white */
+        obj->gc_color = XC_GC_WHITE;
+        
+        /* Add to white list */
+        obj->gc_next = gc->white_list;
+        gc->white_list = obj;
+    }
+}
+
+/* Run a garbage collection cycle */
+void xc_gc_run(xc_runtime_t *rt) {
+    xc_gc_context_t *gc = xc_gc_get_context(rt);
+    
+    /* Skip if GC is disabled */
+    if (!gc->enabled) return;
+    
+    /* Record start time */
+    struct timespec start, end;
+    clock_gettime(CLOCK_MONOTONIC, &start);
+    
+    /* Reset object colors */
+    xc_gc_reset_colors(rt);
+    
+    /* Mark phase */
+    xc_gc_mark_roots(rt);
+    xc_gc_process_gray_list(rt);
+    
+    /* Sweep phase */
+    size_t freed = xc_gc_sweep(rt);
+    
+    /* Record end time and calculate pause time */
+    clock_gettime(CLOCK_MONOTONIC, &end);
+    double pause_time_ms = (end.tv_sec - start.tv_sec) * 1000.0 +
+                          (end.tv_nsec - start.tv_nsec) / 1000000.0;
+    
+    /* Update statistics */
+    gc->gc_cycles++;
+    gc->total_pause_time_ms += pause_time_ms;
+    gc->allocation_count = 0;
+    
+    /* Print debug info if needed */
+    #ifdef XC_DEBUG_GC
+    printf("GC: freed %zu objects, pause time %.2f ms\n", freed, pause_time_ms);
+    #endif
+}
+
+/* Allocate a new object */
+xc_object_t *xc_gc_alloc(xc_runtime_t *rt, size_t size, int type_id) {
+    xc_gc_context_t *gc = xc_gc_get_context(rt);
+    xc_runtime_extended_t *ext_rt = (xc_runtime_extended_t *)rt;
+    
+    /* Check if we need to run GC */
+    gc->allocation_count++;
+    if (gc->enabled && 
+        (gc->allocation_count >= gc->config.max_alloc_before_gc ||
+         gc->used_memory >= gc->config.gc_threshold * gc->heap_size)) {
+        xc_gc_run(rt);
+    }
+    
+    /* Allocate memory for the object */
+    xc_object_t *obj = (xc_object_t *)malloc(size);
+    if (!obj) {
+        /* If allocation fails, run GC and try again */
+        if (gc->enabled) {
+            xc_gc_run(rt);
+            obj = (xc_object_t *)malloc(size);
+            if (!obj) {
+                /* If still fails, return NULL */
+                return NULL;
+            }
+        } else {
+            return NULL;
+        }
+    }
+    
+    /* Initialize object */
+    memset(obj, 0, size);
+    obj->size = size;
+    obj->ref_count = 1;  /* Start with ref count 1 */
+    obj->gc_color = XC_GC_WHITE;
+    obj->type = ext_rt->type_handlers[type_id];
+    
+    /* Add to white list */
+    obj->gc_next = gc->white_list;
+    gc->white_list = obj;
+    
+    /* Update statistics */
+    gc->heap_size += size;
+    gc->used_memory += size;
+    gc->total_allocated++;
+    
+    return obj;
+}
+
+/* Free an object */
+void xc_gc_free(xc_runtime_t *rt, xc_object_t *obj) {
+    if (!obj) return;
+    
+    xc_gc_context_t *gc = xc_gc_get_context(rt);
+    
+    /* Call type-specific cleanup if available */
+    if (obj->type && obj->type->free) {
+        obj->type->free(rt, obj);
+    }
+    
+    /* Remove from white list */
+    xc_object_t *curr = gc->white_list;
+    xc_object_t *prev = NULL;
+    
+    while (curr) {
+        if (curr == obj) {
+            if (prev) {
+                prev->gc_next = curr->gc_next;
+            } else {
+                gc->white_list = curr->gc_next;
+            }
+            break;
+        }
+        prev = curr;
+        curr = curr->gc_next;
+    }
+    
+    /* Update statistics */
+    gc->used_memory -= obj->size;
+    gc->total_freed++;
+    
+    /* Free the memory */
+    free(obj);
+}
+
+/* Mark an object as permanently reachable */
+void xc_gc_mark_permanent(xc_runtime_t *rt, xc_object_t *obj) {
+    if (!obj) return;
+    obj->gc_color = XC_GC_PERMANENT;
+}
+
+/* Add a reference to an object */
+void xc_gc_add_ref(xc_runtime_t *rt, xc_object_t *obj) {
+    if (!obj) return;
+    obj->ref_count++;
+}
+
+/* Release a reference to an object */
+void xc_gc_release(xc_runtime_t *rt, xc_object_t *obj) {
+    if (!obj) return;
+    
+    obj->ref_count--;
+    
+    /* If reference count reaches zero, free the object */
+    if (obj->ref_count <= 0) {
+        xc_gc_free(rt, obj);
+    }
+}
+
+/* Get the reference count of an object */
+int xc_gc_get_ref_count(xc_runtime_t *rt, xc_object_t *obj) {
+    if (!obj) return 0;
+    return obj->ref_count;
+}
+
+/* Add a root object to the root set */
+void xc_gc_add_root(xc_runtime_t *rt, xc_object_t **root_ptr) {
+    if (!root_ptr) return;
+    
+    xc_gc_context_t *gc = xc_gc_get_context(rt);
+    
+    /* Check if we need to resize the roots array */
+    if (gc->root_count >= gc->root_capacity) {
+        size_t new_capacity = gc->root_capacity == 0 ? 16 : gc->root_capacity * 2;
+        xc_object_t ***new_roots = (xc_object_t ***)realloc(gc->roots, new_capacity * sizeof(xc_object_t **));
+        if (!new_roots) {
+            fprintf(stderr, "Failed to resize roots array\n");
+            return;
+        }
+        gc->roots = new_roots;
+        gc->root_capacity = new_capacity;
+    }
+    
+    /* Add root to the array */
+    gc->roots[gc->root_count++] = root_ptr;
+}
+
+/* Remove a root object from the root set */
+void xc_gc_remove_root(xc_runtime_t *rt, xc_object_t **root_ptr) {
+    if (!root_ptr) return;
+    
+    xc_gc_context_t *gc = xc_gc_get_context(rt);
+    
+    /* Find and remove the root */
+    for (size_t i = 0; i < gc->root_count; i++) {
+        if (gc->roots[i] == root_ptr) {
+            /* Move the last root to this position */
+            gc->roots[i] = gc->roots[--gc->root_count];
+            return;
+        }
+    }
+}
+
+/* Get GC statistics */
+xc_gc_stats_t xc_gc_get_stats(xc_runtime_t *rt) {
+    xc_gc_context_t *gc = xc_gc_get_context(rt);
+    
+    xc_gc_stats_t stats;
+    stats.heap_size = gc->heap_size;
+    stats.used_memory = gc->used_memory;
+    stats.total_allocated = gc->total_allocated;
+    stats.total_freed = gc->total_freed;
+    stats.gc_cycles = gc->gc_cycles;
+    stats.avg_pause_time_ms = gc->gc_cycles > 0 ? gc->total_pause_time_ms / gc->gc_cycles : 0;
+    stats.last_pause_time_ms = 0;  /* Not tracked currently */
+    
+    return stats;
+}
+
+/* Print GC statistics */
+void xc_gc_print_stats(xc_runtime_t *rt) {
+    xc_gc_stats_t stats = xc_gc_get_stats(rt);
+    
+    printf("GC Statistics:\n");
+    printf("  Heap size: %zu bytes\n", stats.heap_size);
+    printf("  Used memory: %zu bytes (%.2f%%)\n", 
+           stats.used_memory, 
+           stats.heap_size > 0 ? (double)stats.used_memory / stats.heap_size * 100 : 0);
+    printf("  Total allocated: %zu objects\n", stats.total_allocated);
+    printf("  Total freed: %zu objects\n", stats.total_freed);
+    printf("  GC cycles: %zu\n", stats.gc_cycles);
+    printf("  Average pause time: %.2f ms\n", stats.avg_pause_time_ms);
+}
+
+/* Enable garbage collection */
+void xc_gc_enable(xc_runtime_t *rt) {
+    xc_gc_context_t *gc = xc_gc_get_context(rt);
+    gc->enabled = true;
+}
+
+/* Disable garbage collection */
+void xc_gc_disable(xc_runtime_t *rt) {
+    xc_gc_context_t *gc = xc_gc_get_context(rt);
+    gc->enabled = false;
+}
+
+/* Check if garbage collection is enabled */
+bool xc_gc_is_enabled(xc_runtime_t *rt) {
+    xc_gc_context_t *gc = xc_gc_get_context(rt);
+    return gc->enabled;
+}
+
+/* Global GC function for backward compatibility */
+void xc_gc_collect(void) {
+    /* This is a placeholder for backward compatibility */
+    /* In a real implementation, we would need to get the current runtime */
+    /* and call xc_gc_run on it */
+}
+
+/* Global release function for backward compatibility */
+void xc_gc_release_object(xc_val obj) {
+    /* This is a placeholder for backward compatibility */
+    /* In a real implementation, we would need to get the current runtime */
+    /* and call xc_gc_release on it */
+}
+
+/* Global release function for backward compatibility */
+void xc_release(xc_val obj) {
+    xc_gc_release_object(obj);
 } 

@@ -4,7 +4,7 @@
 
 #include "../xc.h"
 #include "../xc_internal.h"
-#include "../xc_gc.h"
+// #include "../xc_gc.h"  // Removed since we've merged it into xc.c
 // Removed: xc_runtime_internal.h is now part of xc_internal.h
 #include "../xc_internal.h"
 

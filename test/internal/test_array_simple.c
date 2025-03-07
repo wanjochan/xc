@@ -3,8 +3,13 @@
  * 
  * This file contains basic tests for the XC array type implementation.
  */
-#include "test_utils.h"
-#include "../../src/xc/xc_gc.h"
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+
+#include "../../src/xc/xc.h"
+// #include "../../src/xc/xc_gc.h"  // Removed since we've merged it into xc.c
+#include "../../src/xc/xc_internal.h"
 
 // Global runtime instance
 static xc_runtime_t *rt;

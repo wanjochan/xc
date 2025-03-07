@@ -3,7 +3,7 @@
  */
 #include "../xc.h"
 #include "../xc_internal.h"
-#include "../xc_gc.h"
+// #include "../xc_gc.h"  // Removed since we've merged it into xc.c
 
 /* Console对象 */
 static xc_val console_obj = NULL;
