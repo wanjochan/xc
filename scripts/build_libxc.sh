@@ -44,9 +44,7 @@ SOURCE_FILES=(
     # 核心运行时
     "${SRC_DIR}/xc/xc.c"
     "${SRC_DIR}/xc/xc_gc.c"
-    "${SRC_DIR}/xc/xc_exception.c"
-    
-    # 类型系统
+    "${SRC_DIR}/xc/xc_types/xc_exception.c"
     "${SRC_DIR}/xc/xc_types/xc_null.c"
     "${SRC_DIR}/xc/xc_types/xc_boolean.c"
     "${SRC_DIR}/xc/xc_types/xc_number.c"
@@ -55,8 +53,6 @@ SOURCE_FILES=(
     "${SRC_DIR}/xc/xc_types/xc_array.c"
     "${SRC_DIR}/xc/xc_types/xc_object.c"
     "${SRC_DIR}/xc/xc_types/xc_compare.c"
-    "${SRC_DIR}/xc/xc_types/xc_error.c"
-    
     "${SRC_DIR}/xc/xc_vm.c"
     
     # 标准库

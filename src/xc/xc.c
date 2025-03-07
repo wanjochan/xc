@@ -556,7 +556,7 @@ static int register_type(const char* name, xc_type_lifecycle_t* lifecycle) {
     else if (strcmp(name, "array") == 0) type_id = XC_TYPE_ARRAY;
     else if (strcmp(name, "object") == 0) type_id = XC_TYPE_OBJECT;
     else if (strcmp(name, "vm") == 0) type_id = XC_TYPE_VM;
-    else if (strcmp(name, "error") == 0) type_id = XC_TYPE_ERROR;
+    else if (strcmp(name, "error") == 0) type_id = XC_TYPE_EXCEPTION;
     else {
         // 根据类型名称前缀决定分配区间
         if (strncmp(name, "internal.", 9) == 0) {
@@ -796,7 +796,7 @@ static void throw_internal(xc_val error, bool allow_rethrow) {
         printf("未捕获的异常: ");
         if (is(error, XC_TYPE_STRING)) {
             printf("%s\n", (char*)error);
-        } else if (is(error, XC_TYPE_ERROR)) {
+        } else if (is(error, XC_TYPE_EXCEPTION)) {
             printf("%s\n", (char*)error);
         } else {
             printf("<非字符串异常>\n");
@@ -929,7 +929,7 @@ static xc_val try_catch_finally(xc_val try_func, xc_val catch_func, xc_val final
         /* 如果finally块抛出异常，它优先于之前的异常 */
         if (finally_error) {
             /* 如果之前有异常且两者都是ERROR类型，设置异常链 */
-            if (error && is(finally_error, XC_TYPE_ERROR) && is(error, XC_TYPE_ERROR)) {
+            if (error && is(finally_error, XC_TYPE_EXCEPTION) && is(error, XC_TYPE_EXCEPTION)) {
                 /* 设置原始异常为当前异常的cause */
                 call(finally_error, "setCause", error);
             }
@@ -1046,7 +1046,7 @@ static xc_val call(xc_val obj, const char* method, ...) {
 
 static xc_val catch_handler(xc_val this_obj, int argc, xc_val* argv, xc_val closure) {
     if (argc < 1 || !argv[0] || !is(argv[0], XC_TYPE_FUNC)) {
-        xc_val error = create(XC_TYPE_ERROR, XC_ERR_INVALID_ARGUMENT, "catch需要一个函数参数");
+        xc_val error = create(XC_TYPE_EXCEPTION, XC_ERR_INVALID_ARGUMENT, "catch需要一个函数参数");
         throw(error);
         return NULL;
     }
@@ -1055,7 +1055,7 @@ static xc_val catch_handler(xc_val this_obj, int argc, xc_val* argv, xc_val clos
     xc_val try_result = closure;
     
     /* 如果是错误对象，则调用catch处理器 */
-    if (is(try_result, XC_TYPE_ERROR)) {
+    if (is(try_result, XC_TYPE_EXCEPTION)) {
         return invoke(argv[0], 1, try_result);
     }
     
@@ -1065,7 +1065,7 @@ static xc_val catch_handler(xc_val this_obj, int argc, xc_val* argv, xc_val clos
 
 static xc_val finally_handler(xc_val this_obj, int argc, xc_val* argv, xc_val closure) {
     if (argc < 1 || !argv[0] || !is(argv[0], XC_TYPE_FUNC)) {
-        xc_val error = create(XC_TYPE_ERROR, XC_ERR_INVALID_ARGUMENT, "finally需要一个函数参数");
+        xc_val error = create(XC_TYPE_EXCEPTION, XC_ERR_INVALID_ARGUMENT, "finally需要一个函数参数");
         throw(error);
         return NULL;
     }
@@ -1082,7 +1082,7 @@ static xc_val finally_handler(xc_val this_obj, int argc, xc_val* argv, xc_val cl
 
 static xc_val try_handler(xc_val this_obj, int argc, xc_val* argv, xc_val closure) {
     if (argc < 1 || !argv[0] || !is(argv[0], XC_TYPE_FUNC)) {
-        xc_val error = create(XC_TYPE_ERROR, XC_ERR_INVALID_ARGUMENT, "try需要一个函数参数");
+        xc_val error = create(XC_TYPE_EXCEPTION, XC_ERR_INVALID_ARGUMENT, "try需要一个函数参数");
         throw(error);
         return NULL;
     }
@@ -1159,7 +1159,7 @@ static xc_val create(int type, ...) {
 /* 获取错误的堆栈跟踪 */
 xc_object_t *xc_error_get_stack_trace(xc_runtime_t *rt, xc_object_t *error) {
     /* 检查参数 */
-    if (!error || !is(error, XC_TYPE_ERROR)) {
+    if (!error || !is(error, XC_TYPE_EXCEPTION)) {
         return NULL;
     }
     

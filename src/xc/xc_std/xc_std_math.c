@@ -15,7 +15,7 @@ static xc_val math_abs(xc_val self, va_list* args) {
     xc_val num = va_arg(*args, xc_val);
     
     if (!xc.is(num, XC_TYPE_NUMBER)) {
-        return xc.create(XC_TYPE_ERROR, XC_ERR_TYPE, "Math.abs requires a number argument");
+        return xc.create(XC_TYPE_EXCEPTION, XC_ERR_TYPE, "Math.abs requires a number argument");
     }
     
     double value = *(double*)num;
@@ -28,7 +28,7 @@ static xc_val math_max(xc_val self, va_list* args) {
     xc_val b = va_arg(*args, xc_val);
     
     if (!xc.is(a, XC_TYPE_NUMBER) || !xc.is(b, XC_TYPE_NUMBER)) {
-        return xc.create(XC_TYPE_ERROR, XC_ERR_TYPE, "Math.max requires number arguments");
+        return xc.create(XC_TYPE_EXCEPTION, XC_ERR_TYPE, "Math.max requires number arguments");
     }
     
     double value_a = *(double*)a;
@@ -43,7 +43,7 @@ static xc_val math_min(xc_val self, va_list* args) {
     xc_val b = va_arg(*args, xc_val);
     
     if (!xc.is(a, XC_TYPE_NUMBER) || !xc.is(b, XC_TYPE_NUMBER)) {
-        return xc.create(XC_TYPE_ERROR, XC_ERR_TYPE, "Math.min requires number arguments");
+        return xc.create(XC_TYPE_EXCEPTION, XC_ERR_TYPE, "Math.min requires number arguments");
     }
     
     double value_a = *(double*)a;
@@ -57,7 +57,7 @@ static xc_val math_round(xc_val self, va_list* args) {
     xc_val num = va_arg(*args, xc_val);
     
     if (!xc.is(num, XC_TYPE_NUMBER)) {
-        return xc.create(XC_TYPE_ERROR, XC_ERR_TYPE, "Math.round requires a number argument");
+        return xc.create(XC_TYPE_EXCEPTION, XC_ERR_TYPE, "Math.round requires a number argument");
     }
     
     double value = *(double*)num;
@@ -69,7 +69,7 @@ static xc_val math_floor(xc_val self, va_list* args) {
     xc_val num = va_arg(*args, xc_val);
     
     if (!xc.is(num, XC_TYPE_NUMBER)) {
-        return xc.create(XC_TYPE_ERROR, XC_ERR_TYPE, "Math.floor requires a number argument");
+        return xc.create(XC_TYPE_EXCEPTION, XC_ERR_TYPE, "Math.floor requires a number argument");
     }
     
     double value = *(double*)num;
@@ -81,7 +81,7 @@ static xc_val math_ceil(xc_val self, va_list* args) {
     xc_val num = va_arg(*args, xc_val);
     
     if (!xc.is(num, XC_TYPE_NUMBER)) {
-        return xc.create(XC_TYPE_ERROR, XC_ERR_TYPE, "Math.ceil requires a number argument");
+        return xc.create(XC_TYPE_EXCEPTION, XC_ERR_TYPE, "Math.ceil requires a number argument");
     }
     
     double value = *(double*)num;
@@ -107,7 +107,7 @@ static xc_val math_pow(xc_val self, va_list* args) {
     xc_val exponent = va_arg(*args, xc_val);
     
     if (!xc.is(base, XC_TYPE_NUMBER) || !xc.is(exponent, XC_TYPE_NUMBER)) {
-        return xc.create(XC_TYPE_ERROR, XC_ERR_TYPE, "Math.pow requires number arguments");
+        return xc.create(XC_TYPE_EXCEPTION, XC_ERR_TYPE, "Math.pow requires number arguments");
     }
     
     double base_val = *(double*)base;
@@ -121,12 +121,12 @@ static xc_val math_sqrt(xc_val self, va_list* args) {
     xc_val num = va_arg(*args, xc_val);
     
     if (!xc.is(num, XC_TYPE_NUMBER)) {
-        return xc.create(XC_TYPE_ERROR, XC_ERR_TYPE, "Math.sqrt requires a number argument");
+        return xc.create(XC_TYPE_EXCEPTION, XC_ERR_TYPE, "Math.sqrt requires a number argument");
     }
     
     double value = *(double*)num;
     if (value < 0) {
-        return xc.create(XC_TYPE_ERROR, XC_ERR_VALUE, "Math.sqrt cannot be called with negative numbers");
+        return xc.create(XC_TYPE_EXCEPTION, XC_ERR_VALUE, "Math.sqrt cannot be called with negative numbers");
     }
     
     return xc.create(XC_TYPE_NUMBER, sqrt(value));

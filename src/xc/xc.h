@@ -15,7 +15,7 @@
 #define XC_TYPE_BOOL         3
 #define XC_TYPE_NUMBER       4
 #define XC_TYPE_STRING       5
-#define XC_TYPE_ERROR        6
+#define XC_TYPE_EXCEPTION    6
 #define XC_TYPE_FUNC         7
 #define XC_TYPE_ARRAY        8
 #define XC_TYPE_OBJECT       9

@@ -19,7 +19,7 @@ static xc_val throw_exception_func(xc_val self, xc_val args) {
     printf("Throwing exception...\n");
     
     // Create an error object
-    xc_val error = xc.create(XC_TYPE_ERROR, "Test exception");
+    xc_val error = xc.create(XC_TYPE_EXCEPTION, "Test exception");
     
     // Throw the exception
     xc.throw(error);
@@ -91,7 +91,7 @@ void test_uncaught_exception(void) {
     // Get the current error
     xc_val current_error = xc.get_current_error();
     TEST_ASSERT(current_error != NULL, "Current error should not be NULL");
-    TEST_ASSERT(xc.is(current_error, XC_TYPE_ERROR), "Current error should be an error object");
+    TEST_ASSERT(xc.is(current_error, XC_TYPE_EXCEPTION), "Current error should be an error object");
     
     // Clear the error
     xc.clear_error();

@@ -1,10 +1,7 @@
-/*
- * xc_exception.c - XC exception handling implementation
- */
 
-#include "xc.h"
-#include "xc_gc.h"
-#include "xc_internal.h"
+#include "../xc.h"
+#include "../xc_gc.h"
+#include "../xc_internal.h"
 
 /* Create a stack trace entry */
 static xc_stack_trace_entry_t xc_stack_trace_entry_create(const char *function, const char *file, int line) {
@@ -82,7 +79,7 @@ xc_stack_trace_t *xc_stack_trace_capture(xc_runtime_t *rt) {
 /* Create a new exception object */
 static xc_exception_t *xc_exception_create_internal(xc_runtime_t *rt, int type, const char *message, xc_object_t *cause) {
     /* Allocate memory for the exception object */
-    xc_exception_t *exception = (xc_exception_t *)xc_gc_alloc(rt, sizeof(xc_exception_t), XC_TYPE_ERROR);
+    xc_exception_t *exception = (xc_exception_t *)xc_gc_alloc(rt, sizeof(xc_exception_t), XC_TYPE_EXCEPTION);
     if (!exception) return NULL;
     
     /* Initialize the exception fields */

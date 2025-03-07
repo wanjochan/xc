@@ -1,11 +1,3 @@
-/*
- * xc_error.c - Error type implementation
- */
-
-#include <stdlib.h>
-#include <string.h>
-#include <stdio.h>
-
 #include "../xc.h"
 #include "../xc_internal.h"
 #include "../xc_gc.h"
