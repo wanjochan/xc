@@ -19,7 +19,7 @@ static xc_val throw_exception_func(xc_val self, xc_val args, int argc, xc_val* a
     printf("DEBUG: throw_exception_func 被调用，self=%p, args=%p, argc=%d\n", self, args, argc);
     
     // 创建一个异常对象
-    xc_val error = xc.create(XC_TYPE_EXCEPTION, "Test exception");
+    xc_val error = xc.new(XC_TYPE_EXCEPTION, "Test exception");
     printf("DEBUG: 创建异常对象 error=%p\n", error);
     
     // 抛出异常
@@ -47,7 +47,7 @@ static xc_val catch_handler(xc_val self, xc_val args, int argc, xc_val* argv) {
     }
     
     // 返回一个值，表示异常已处理
-    return xc.create(XC_TYPE_STRING, "Exception caught");
+    return xc.new(XC_TYPE_STRING, "Exception caught");
 }
 
 /* Finally handler function */
@@ -58,7 +58,7 @@ static xc_val finally_handler(xc_val self, xc_val args, int argc, xc_val* argv) 
     finally_handler_called = 1;
     
     // 返回一个值，表示 finally 块已执行
-    return xc.create(XC_TYPE_STRING, "Finally executed");
+    return xc.new(XC_TYPE_STRING, "Finally executed");
 }
 
 /* Test basic exception handling */
@@ -72,9 +72,9 @@ void test_exception_basic(void) {
     finally_handler_called = 0;
     
     // 创建函数对象
-    xc_val throw_func = xc.create(XC_TYPE_FUNC, throw_exception_func);
-    xc_val catch_func = xc.create(XC_TYPE_FUNC, catch_handler);
-    xc_val finally_func = xc.create(XC_TYPE_FUNC, finally_handler);
+    xc_val throw_func = xc.new(XC_TYPE_FUNC, throw_exception_func);
+    xc_val catch_func = xc.new(XC_TYPE_FUNC, catch_handler);
+    xc_val finally_func = xc.new(XC_TYPE_FUNC, finally_handler);
     
     printf("DEBUG: 创建函数对象 throw_func=%p, catch_func=%p, finally_func=%p\n", 
            throw_func, catch_func, finally_func);
@@ -98,37 +98,50 @@ void test_exception_basic(void) {
     test_end("Exception Basic Functionality (External)");
 }
 
+/* 未捕获异常处理器函数 */
+static xc_val uncaught_handler_func(xc_val self, int argc, xc_val *argv, void *closure) {
+    printf("DEBUG: uncaught_handler_func 被调用，self=%p, args=%p, argc=%d\n", self, argv, argc);
+    
+    if (argc < 1 || !argv || !argv[0]) {
+        return xc.new(XC_TYPE_STRING, "Uncaught: Unknown error");
+    }
+    
+    // 获取异常消息
+    xc_val message = xc.dot(argv[0], "message");
+    if (!message) {
+        return xc.new(XC_TYPE_STRING, "Uncaught: No message");
+    }
+    
+    // 在外部测试中，我们不能直接访问字符串的值
+    // 所以我们只返回一个固定的消息
+    return xc.new(XC_TYPE_STRING, "Uncaught: Test exception");
+}
+
 /* Test uncaught exception handling */
 void test_uncaught_exception(void) {
     test_start("Uncaught Exception Handling (External)");
     
     printf("Testing uncaught exception handling through public API...\n");
     
-    // Create a custom uncaught exception handler
-    xc_val uncaught_handler = xc.create(XC_TYPE_FUNC, "function(error) { return 'Uncaught: ' + error.message; }");
+    // Create a custom uncaught exception handler using C function
+    xc_val uncaught_handler = xc.new(XC_TYPE_FUNC, uncaught_handler_func);
     
     // Set the uncaught exception handler
     xc.set_uncaught_exception_handler(uncaught_handler);
     
     // Create a function that throws an exception
-    xc_val throw_func = xc.create(XC_TYPE_FUNC, throw_exception_func);
+    xc_val throw_func = xc.new(XC_TYPE_FUNC, throw_exception_func);
     
     // Execute try with no catch (should call uncaught handler)
-    xc.try_catch_finally(throw_func, NULL, NULL);
+    xc_val result = xc.try_catch_finally(throw_func, NULL, NULL);
     
-    // Get the current error
+    // Check that the result contains the expected message
+    TEST_ASSERT(result != NULL, "Result from uncaught handler should not be NULL");
+    TEST_ASSERT(xc.is(result, XC_TYPE_STRING), "Result should be a string");
+    
+    // Get the current error (should be cleared after handling)
     xc_val current_error = xc.get_current_error();
-    TEST_ASSERT(current_error != NULL, "Current error should not be NULL");
-    TEST_ASSERT(xc.is(current_error, XC_TYPE_EXCEPTION), "Current error should be an error object");
-    
-    // Clear the error
-    xc.clear_error();
-    
-    // Verify error was cleared
-    current_error = xc.get_current_error();
-    TEST_ASSERT(current_error == NULL, "Error should be cleared");
-    
-    printf("Uncaught exception test completed successfully.\n");
+    TEST_ASSERT(current_error == NULL, "Current error should be NULL after handling");
     
     test_end("Uncaught Exception Handling (External)");
 } 

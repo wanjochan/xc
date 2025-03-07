@@ -623,12 +623,12 @@ static void throw_internal(xc_val error, bool allow_rethrow);
 static void throw(xc_val error);
 static void throw_with_rethrow(xc_val error);
 
-static xc_val xc_new(int type, ...);
-static int xc_typeof(xc_val val);
-static int xc_is(xc_val val, int type);
-static xc_val xc_invoke(xc_val func, int argc, ...);
-static xc_val xc_dot(xc_val obj, const char* key, ...);
-static xc_val xc_call(xc_val obj, const char* method, ...);
+xc_val xc_new(int type, ...);
+int xc_typeof(xc_val val);
+int xc_is(xc_val val, int type);
+xc_val xc_invoke(xc_val func, int argc, ...);
+xc_val xc_dot(xc_val obj, const char* key, ...);
+xc_val xc_call(xc_val obj, const char* method, ...);
 
 static void gc_mark_object(xc_val obj);
 static void gc_mark_stack(void);

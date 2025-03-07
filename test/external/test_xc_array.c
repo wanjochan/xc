@@ -15,14 +15,14 @@ void test_array_basic(void) {
     printf("Testing basic array functionality through public API...\n");
     
     // Create an array
-    xc_val arr = xc.create(XC_TYPE_ARRAY);
+    xc_val arr = xc.new(XC_TYPE_ARRAY);
     TEST_ASSERT(arr != NULL, "Array creation failed");
     TEST_ASSERT(xc.is(arr, XC_TYPE_ARRAY), "Array type check failed");
     
     // Create some values to add to the array
-    xc_val num1 = xc.create(XC_TYPE_NUMBER, 42.0);
-    xc_val str1 = xc.create(XC_TYPE_STRING, "Hello");
-    xc_val bool1 = xc.create(XC_TYPE_BOOL, 1);
+    xc_val num1 = xc.new(XC_TYPE_NUMBER, 42.0);
+    xc_val str1 = xc.new(XC_TYPE_STRING, "Hello");
+    xc_val bool1 = xc.new(XC_TYPE_BOOL, 1);
     
     // Add elements to the array using push method
     xc.call(arr, "push", num1);
@@ -34,9 +34,9 @@ void test_array_basic(void) {
     TEST_ASSERT(length != NULL, "Array length retrieval failed");
     
     // Get elements by index
-    xc_val elem0 = xc.call(arr, "get", xc.create(XC_TYPE_NUMBER, 0.0));
-    xc_val elem1 = xc.call(arr, "get", xc.create(XC_TYPE_NUMBER, 1.0));
-    xc_val elem2 = xc.call(arr, "get", xc.create(XC_TYPE_NUMBER, 2.0));
+    xc_val elem0 = xc.call(arr, "get", xc.new(XC_TYPE_NUMBER, 0.0));
+    xc_val elem1 = xc.call(arr, "get", xc.new(XC_TYPE_NUMBER, 1.0));
+    xc_val elem2 = xc.call(arr, "get", xc.new(XC_TYPE_NUMBER, 2.0));
     
     TEST_ASSERT(elem0 != NULL, "Element 0 retrieval failed");
     TEST_ASSERT(elem1 != NULL, "Element 1 retrieval failed");
@@ -67,17 +67,17 @@ void test_array_advanced(void) {
     printf("Testing advanced array operations through public API...\n");
     
     // Create an array
-    xc_val arr = xc.create(XC_TYPE_ARRAY);
+    xc_val arr = xc.new(XC_TYPE_ARRAY);
     
     // Add elements
     for (int i = 0; i < 5; i++) {
-        xc_val num = xc.create(XC_TYPE_NUMBER, (double)i);
+        xc_val num = xc.new(XC_TYPE_NUMBER, (double)i);
         xc.call(arr, "push", num);
     }
     
     // Test slice operation
-    xc_val start = xc.create(XC_TYPE_NUMBER, 1.0);
-    xc_val end = xc.create(XC_TYPE_NUMBER, 4.0);
+    xc_val start = xc.new(XC_TYPE_NUMBER, 1.0);
+    xc_val end = xc.new(XC_TYPE_NUMBER, 4.0);
     xc_val sliced = xc.call(arr, "slice", start, end);
     
     TEST_ASSERT(sliced != NULL, "Slice operation failed");
@@ -87,9 +87,9 @@ void test_array_advanced(void) {
     TEST_ASSERT(slice_length != NULL, "Sliced array length retrieval failed");
     
     // Test concat operation
-    xc_val arr2 = xc.create(XC_TYPE_ARRAY);
-    xc.call(arr2, "push", xc.create(XC_TYPE_NUMBER, 100.0));
-    xc.call(arr2, "push", xc.create(XC_TYPE_NUMBER, 200.0));
+    xc_val arr2 = xc.new(XC_TYPE_ARRAY);
+    xc.call(arr2, "push", xc.new(XC_TYPE_NUMBER, 100.0));
+    xc.call(arr2, "push", xc.new(XC_TYPE_NUMBER, 200.0));
     
     xc_val concat_result = xc.call(arr, "concat", arr2);
     TEST_ASSERT(concat_result != NULL, "Concat operation failed");
@@ -99,7 +99,7 @@ void test_array_advanced(void) {
     TEST_ASSERT(concat_length != NULL, "Concatenated array length retrieval failed");
     
     // Test join operation
-    xc_val separator = xc.create(XC_TYPE_STRING, ", ");
+    xc_val separator = xc.new(XC_TYPE_STRING, ", ");
     xc_val joined = xc.call(arr, "join", separator);
     TEST_ASSERT(joined != NULL, "Join operation failed");
     TEST_ASSERT(xc.is(joined, XC_TYPE_STRING), "Join result should be a string");

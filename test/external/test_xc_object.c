@@ -15,13 +15,13 @@ void test_object_basic(void) {
     printf("Testing basic object functionality through public API...\n");
     
     // Create an object
-    xc_val obj = xc.create(XC_TYPE_OBJECT);
+    xc_val obj = xc.new(XC_TYPE_OBJECT);
     TEST_ASSERT(obj != NULL, "Object creation failed");
     TEST_ASSERT(xc.is(obj, XC_TYPE_OBJECT), "Object type check failed");
     
     // Create a string value
-    xc_val str_key = xc.create(XC_TYPE_STRING, "name");
-    xc_val str_value = xc.create(XC_TYPE_STRING, "XC Object");
+    xc_val str_key = xc.new(XC_TYPE_STRING, "name");
+    xc_val str_value = xc.new(XC_TYPE_STRING, "XC Object");
     
     // Set property using dot notation
     xc.dot(obj, "name", str_value);
@@ -32,7 +32,7 @@ void test_object_basic(void) {
     TEST_ASSERT(xc.is(result, XC_TYPE_STRING), "Property type check failed");
     
     // Create a number value
-    xc_val num_value = xc.create(XC_TYPE_NUMBER, 42.0);
+    xc_val num_value = xc.new(XC_TYPE_NUMBER, 42.0);
     
     // Set another property
     xc.dot(obj, "answer", num_value);
@@ -58,22 +58,22 @@ void test_object_prototype(void) {
     printf("Testing object prototype inheritance through public API...\n");
     
     // Create a prototype object
-    xc_val proto = xc.create(XC_TYPE_OBJECT);
+    xc_val proto = xc.new(XC_TYPE_OBJECT);
     TEST_ASSERT(proto != NULL, "Prototype object creation failed");
     
     // Set a property on the prototype
-    xc_val proto_value = xc.create(XC_TYPE_STRING, "Prototype Value");
+    xc_val proto_value = xc.new(XC_TYPE_STRING, "Prototype Value");
     xc.dot(proto, "protoProperty", proto_value);
     
     // Create an object with the prototype
-    xc_val obj = xc.create(XC_TYPE_OBJECT);
+    xc_val obj = xc.new(XC_TYPE_OBJECT);
     TEST_ASSERT(obj != NULL, "Object creation failed");
     
     // Set the prototype
     xc.call(obj, "setPrototype", proto);
     
     // Set a property on the object
-    xc_val obj_value = xc.create(XC_TYPE_STRING, "Object Value");
+    xc_val obj_value = xc.new(XC_TYPE_STRING, "Object Value");
     xc.dot(obj, "objProperty", obj_value);
     
     // Test direct property access
@@ -85,7 +85,7 @@ void test_object_prototype(void) {
     TEST_ASSERT(result != NULL, "Prototype property retrieval failed");
     
     // Test property shadowing
-    xc_val shadow_value = xc.create(XC_TYPE_STRING, "Shadow Value");
+    xc_val shadow_value = xc.new(XC_TYPE_STRING, "Shadow Value");
     xc.dot(obj, "protoProperty", shadow_value);
     
     result = xc.dot(obj, "protoProperty");

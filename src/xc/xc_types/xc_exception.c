@@ -274,8 +274,29 @@ void xc_exception_throw(xc_runtime_t *rt, xc_object_t *exception) {
         
         /* 如果有未捕获异常处理器，调用它 */
         if (g_uncaught_exception_handler && ((xc_object_t *)g_uncaught_exception_handler)->type_id == XC_TYPE_FUNC) {
+            /* 安全调用未捕获异常处理器 */
             xc_val args[1] = {exception};
-            xc_function_invoke(g_uncaught_exception_handler, NULL, 1, args);
+            xc_val result = NULL;
+            
+            /* 使用 try-catch 包装处理器调用，防止处理器本身抛出异常 */
+            xc_exception_frame_t frame;
+            memset(&frame, 0, sizeof(frame));
+            frame.prev = NULL;
+            
+            if (setjmp(frame.jmp) == 0) {
+                /* 临时设置异常帧，防止递归调用 */
+                xc_exception_frame = &frame;
+                result = xc_function_invoke(g_uncaught_exception_handler, NULL, 1, args);
+                xc_exception_frame = NULL;
+            } else {
+                /* 处理器本身抛出了异常 */
+                fprintf(stderr, "Error: Uncaught exception handler threw an exception\n");
+                if (frame.exception && ((xc_object_t *)frame.exception)->type_id == XC_TYPE_EXCEPTION) {
+                    xc_exception_t *exc = (xc_exception_t *)frame.exception;
+                    fprintf(stderr, "Handler exception: %s\n", exc->message ? exc->message : "No message");
+                }
+                exit(1);
+            }
         } else {
             /* 没有处理器，打印异常信息并退出 */
             fprintf(stderr, "Uncaught exception: ");
