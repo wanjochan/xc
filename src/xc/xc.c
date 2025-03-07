@@ -59,48 +59,14 @@ static xc_val alloc_object(int type, ...) {
     
     /* 分配对象内存 */
     xc_header_t* header;
-    // if (entry->lifecycle.allocator) {
-    //     // 使用类型特定的分配器
-    //     header = (xc_header_t*)entry->lifecycle.allocator(size + sizeof(xc_header_t));
-    // } else {
-    //     // 使用 GC 模块的内存分配函数
-    //     header = (xc_header_t*)xc_gc_allocate_raw_memory(size + sizeof(xc_header_t), type);
-    // }
-        // 使用 GC 模块的内存分配函数
-        header = (xc_header_t*)xc_gc_allocate_raw_memory(size + sizeof(xc_header_t), type);
+
+    // 使用 GC 模块的内存分配函数
+    header = (xc_header_t*)xc_gc_allocate_raw_memory(size + sizeof(xc_header_t), type);
     
     if (!header) {
         return NULL;
     }
     
-    // /* 如果使用了自定义分配器，需要初始化 header 字段 */
-    // if (entry->lifecycle.allocator) {
-    //     /* 初始化对象头 */
-    //     header->type = type;
-    //     header->flags = 0;
-    //     header->ref_count = 1;
-    //     header->size = size + sizeof(xc_header_t);
-    //     header->type_name = entry->name;
-    //     header->color = XC_GC_WHITE;
-
-    //     // /*
-    //     // header->next_gc = _thread_gc.gc_first;
-        
-    //     // _thread_gc.gc_first = header;
-    //     // _thread_gc.total_memory += header->size;
-        
-    //     // /* 增加分配计数 */
-    //     // _thread_gc.allocation_count++;
-        
-    //     // /* 检查是否需要进行垃圾回收 */
-    //     // if (_thread_gc.allocation_count > 1000 || _thread_gc.total_memory > _thread_gc.gc_threshold) {
-    //     //     xc_gc();
-    //     // }
-    //     // */
-    // } else {
-    //     // 如果使用的是 xc_gc_allocate_raw_memory，只需设置类型特定的字段
-    //     header->type_name = entry->name;
-    // }
     header->type_name = entry->name;
     
     /* 计算对象部分的指针 */
@@ -181,12 +147,12 @@ int xc_register_type(const char* name, xc_type_lifecycle_t* lifecycle) {
     
     entry->id = type_id;
     memcpy(&entry->lifecycle, lifecycle, sizeof(xc_type_lifecycle_t));
-    printf("DEBUG xc_register_type(\"%s\"), lifecycle=%d, type_id=%d\n", name, lifecycle, type_id);
+    XC_LOG_DEBUG("xc_register_type(\"%s\"), lifecycle=%d, type_id=%d", name, lifecycle, type_id);
     if (lifecycle->creator) {
-        printf("DEBUG %s creator=%d\n",name, lifecycle->creator);
+        XC_LOG_DEBUG("%s creator=%d", name, lifecycle->creator);
     }
     if (lifecycle->initializer) {
-        printf("DEBUG %s initializer=%d\n",name, lifecycle->initializer);
+        XC_LOG_DEBUG("%s initializer=%d", name, lifecycle->initializer);
     }
 
     /* 添加到哈希表 */
@@ -205,14 +171,14 @@ int xc_register_type(const char* name, xc_type_lifecycle_t* lifecycle) {
 
 /* 注册方法 */
 static char register_method(int type, const char* name, xc_method_func func) {
-    printf("DEBUG register_method: type=%d, name=%s, func=%p\n", type, name, func);
+    XC_LOG_DEBUG("register_method: type=%d, name=%s, func=%p", type, name, func);
     if (type < 0 || type >= 16 || !name || !func) {
-        printf("DEBUG register_method: invalid parameters\n");
+        XC_LOG_DEBUG("register_method: invalid parameters");
         return 0;
     }
     
     if (_state.method_count >= 256) {
-        printf("DEBUG register_method: method table full\n");
+        XC_LOG_DEBUG("register_method: method table full");
         return 0;
     }
     
@@ -221,39 +187,102 @@ static char register_method(int type, const char* name, xc_method_func func) {
     _state.methods[method_idx].func = (xc_val (*)(xc_val, ...))func;
     _state.methods[method_idx].next = _state.method_heads[type];
     _state.method_heads[type] = method_idx;
-    printf("DEBUG register_method: registered method at index %d, next=%d, head=%d\n", 
+    XC_LOG_DEBUG("register_method: registered method at index %d, next=%d, head=%d",
            method_idx, _state.methods[method_idx].next, _state.method_heads[type]);
     
     return 1;
 }
 
-/* 查找方法 */
-static xc_method_func find_method(int type, const char* name) {
-    printf("DEBUG find_method: type=%d, name=%s\n", type, name);
+// 全局缓存数组
+static method_cache_entry_t method_cache[METHOD_CACHE_SIZE] = {0};
+static int cache_age_counter = 0;
+
+/* 原始的方法查找函数（无缓存） */
+static xc_method_func find_method_original(int type, const char* name) {
     if (type < 0 || type >= 16 || !name) {
-        printf("DEBUG find_method: invalid parameters\n");
         return NULL;
     }
     
     int method_idx = _state.method_heads[type];
-    printf("DEBUG find_method: method_idx=%d\n", method_idx);
+    XC_LOG_DEBUG("find_method_original: method_idx=%d", method_idx);
+    
     while (method_idx != 0) {
-        printf("DEBUG find_method: checking method at index %d, name=%s\n", 
-               method_idx, _state.methods[method_idx].name);
+        XC_LOG_DEBUG("find_method_original: checking method at index %d, name=%s", method_idx, _state.methods[method_idx].name);
         if (strcmp(_state.methods[method_idx].name, name) == 0) {
-            printf("DEBUG find_method: found method at index %d, func=%p\n", 
-                   method_idx, _state.methods[method_idx].func);
+            XC_LOG_DEBUG("find_method_original: found method at index %d, func=%p", method_idx, _state.methods[method_idx].func);
             return (xc_method_func)_state.methods[method_idx].func;
         }
         method_idx = _state.methods[method_idx].next;
-        printf("DEBUG find_method: next method_idx=%d\n", method_idx);
+        XC_LOG_DEBUG("find_method_original: next method_idx=%d", method_idx);
     }
     
-    printf("DEBUG find_method: method not found\n");
+    XC_LOG_DEBUG("find_method_original: method not found");
     return NULL;
 }
 
-static xc_val dot(xc_val obj, const char* key, ...) {
+/* 初始化缓存 */
+static void init_method_cache(void) {
+    memset(method_cache, 0, sizeof(method_cache));
+    cache_age_counter = 0;
+}
+
+/* 清理缓存 */
+static void clear_method_cache(void) {
+    memset(method_cache, 0, sizeof(method_cache));
+}
+
+/* 查找方法（带缓存） */
+static xc_method_func find_method(int type, const char *name) {
+    if (type < 0 || type >= 16 || !name) {
+        return NULL;
+    }
+    
+    // 计算缓存键
+    unsigned int name_hash = hash_string(name);
+    unsigned int key = ((unsigned int)type << 16) | (name_hash & 0xFFFF);
+    
+    // 查找缓存
+    for (int i = 0; i < METHOD_CACHE_SIZE; i++) {
+        if (method_cache[i].key == key && method_cache[i].value) {
+            // 更新访问时间
+            method_cache[i].age = ++cache_age_counter;
+            XC_LOG_DEBUG("find_method: cache hit for type=%d, name=%s", type, name);
+            return method_cache[i].value;
+        }
+    }
+    
+    XC_LOG_DEBUG("find_method: cache miss for type=%d, name=%s", type, name);
+    
+    // 缓存未命中，调用原始查找函数
+    xc_method_func method = find_method_original(type, name);
+    
+    if (method) {
+        // 添加到缓存
+        int oldest_idx = 0;
+        for (int i = 1; i < METHOD_CACHE_SIZE; i++) {
+            if (!method_cache[i].value ||
+                method_cache[i].age < method_cache[oldest_idx].age) {
+                oldest_idx = i;
+            }
+        }
+        
+        method_cache[oldest_idx].key = key;
+        method_cache[oldest_idx].value = method;
+        method_cache[oldest_idx].age = ++cache_age_counter;
+        XC_LOG_DEBUG("find_method: added to cache at index %d", oldest_idx);
+    }
+    
+    return method;
+}
+
+/* 批量查找多个方法 */
+static void find_methods_batch(int type, const char** names, int count, xc_method_func* results) {
+    for (int i = 0; i < count; i++) {
+        results[i] = find_method(type, names[i]);
+    }
+}
+
+static xc_val xc_dot(xc_val obj, const char* key, ...) {
     if (!obj || !key) return NULL;
     
     /* 处理可变参数 */
@@ -315,25 +344,32 @@ static xc_val dot(xc_val obj, const char* key, ...) {
     
     /* 这是获取操作 */
     
-    /* 首先尝试找类型特定的属性获取器，格式为 "get_属性名" */
+    /* 准备方法名数组 */
+    const char* method_names[3];
+    xc_method_func methods[3];
+    
+    /* 设置特定getter名称 */
     char getter_name[128] = "get_";
     strncat(getter_name, key, sizeof(getter_name) - 5); // 5 = 长度"get_" + 1防止溢出
     
-    xc_method_func specific_getter = find_method(type, getter_name);
-    if (specific_getter) {
-        return specific_getter(obj, NULL);
+    method_names[0] = getter_name;  // "get_xxx"
+    method_names[1] = key;          // 直接方法名
+    method_names[2] = "get";        // 通用getter
+    
+    /* 批量查找 */
+    find_methods_batch(type, method_names, 3, methods);
+    
+    /* 使用结果 */
+    if (methods[0]) {
+        return methods[0](obj, NULL);
     }
     
-    /* 然后尝试找类型特定的方法 */
-    xc_method_func method = find_method(type, key);
-    if (method) {
-        return method;  // 返回方法函数本身，以便后续调用
+    if (methods[1]) {
+        return methods[1];  // 返回方法函数本身，以便后续调用
     }
     
-    /* 如果没有特定方法，尝试通用的获取方法 */
-    xc_method_func general_getter = find_method(type, "get");
-    if (general_getter) {
-        return general_getter(obj, xc.create(XC_TYPE_STRING, key));
+    if (methods[2]) {
+        return methods[2](obj, xc.create(XC_TYPE_STRING, key));
     }
     
     /* 如果这是对象类型，直接获取属性 */
@@ -405,9 +441,17 @@ static void throw_internal(xc_val error, bool allow_rethrow) {
         handler->has_caught = true;
     }
     
+    /* 如果有异常帧，设置异常并跳转 */
+    if (xc_exception_frame) {
+        xc_exception_frame->exception = error;
+        longjmp(xc_exception_frame->jmp, 1);
+        return; /* 不会执行到这里 */
+    }
+    
     /* 如果有异常处理器，跳转到异常处理器 */
     if (_xc_thread_state.current) {
         longjmp(_xc_thread_state.current->env, 1);
+        return; /* 不会执行到这里 */
     }
     
     /* 如果有未捕获异常处理器，调用它 */
@@ -449,14 +493,36 @@ static void throw(xc_val error) {
 
 /* 添加允许重新抛出的版本，在确实需要的场景使用 */
 static void throw_with_rethrow(xc_val error) {
+    /* 确保错误对象有效 */
+    if (!error) {
+        printf("警告: 尝试抛出空异常\n");
+        return;
+    }
+    
+    /* 调用内部抛出函数，允许重抛 */
     throw_internal(error, true);
 }
 
 static xc_val try_catch_finally(xc_val try_func, xc_val catch_func, xc_val finally_func) {
     /* 检查参数 */
-    if (!is(try_func, XC_TYPE_FUNC)) {
-        // 避免递归调用create，直接返回NULL
+    if (!try_func) {
+        printf("错误: try_func为NULL\n");
         return NULL;
+    }
+    
+    if (!is(try_func, XC_TYPE_FUNC)) {
+        printf("错误: try_func不是函数类型，类型ID=%d\n", type_of(try_func));
+        
+        /* 创建一个异常对象而不是直接返回NULL */
+        xc_val error = create(XC_TYPE_EXCEPTION, "try_func必须是函数类型");
+        
+        /* 如果有catch处理器，直接调用它处理这个错误 */
+        if (catch_func && is(catch_func, XC_TYPE_FUNC)) {
+            xc_val args[1] = {error};
+            return invoke(catch_func, 1, args);
+        }
+        
+        return error; /* 返回错误对象而不是NULL */
     }
     
     /* 创建异常帧 */
@@ -492,19 +558,53 @@ static xc_val try_catch_finally(xc_val try_func, xc_val catch_func, xc_val final
         /* 如果有catch处理器，调用它 */
         if (catch_func && is(catch_func, XC_TYPE_FUNC)) {
             push_stack_frame("catch_handler", __FILE__, __LINE__);
-            xc_val args[1] = {error};
-            result = invoke(catch_func, 1, args);
+            
+            /* 创建临时异常帧来捕获catch中可能的异常 */
+            xc_exception_frame_t catch_frame;
+            catch_frame.prev = xc_exception_frame;
+            catch_frame.exception = NULL;
+            catch_frame.handled = false;
+            catch_frame.file = __FILE__;
+            catch_frame.line = __LINE__;
+            catch_frame.finally_handler = NULL;
+            catch_frame.finally_context = NULL;
+            
+            xc_exception_frame = &catch_frame;
+            
+            /* 使用setjmp捕获catch中可能抛出的异常 */
+            if (setjmp(catch_frame.jmp) == 0) {
+                xc_val args[1] = {error};
+                result = invoke(catch_func, 1, args);
+                
+                /* 确保结果不为NULL，如果是NULL则创建一个默认值 */
+                if (result == NULL) {
+                    result = create(XC_TYPE_STRING, "Caught");
+                }
+            } else {
+                /* catch中抛出了异常 */
+                error = catch_frame.exception;
+                catch_frame.exception = NULL;
+                
+                /* 标记为需要重新抛出 */
+                exception_occurred = true;
+            }
+            
+            /* 恢复异常帧 */
+            xc_exception_frame = catch_frame.prev;
+            
+            /* 弹出栈帧 */
             pop_stack_frame();
-            frame.handled = true;
+        } else {
+            /* 没有catch处理器，标记为需要重新抛出 */
+            exception_occurred = true;
         }
     }
     
-    /* 如果有finally处理器，执行它 */
+    /* 执行finally块 */
     if (finally_func && is(finally_func, XC_TYPE_FUNC)) {
-        xc_val finally_result = NULL;
-        xc_val finally_error = NULL;
+        push_stack_frame("finally_handler", __FILE__, __LINE__);
         
-        /* 创建临时异常帧来捕获finally中的异常 */
+        /* 创建临时异常帧来捕获finally中可能的异常 */
         xc_exception_frame_t finally_frame;
         finally_frame.prev = xc_exception_frame;
         finally_frame.exception = NULL;
@@ -516,43 +616,39 @@ static xc_val try_catch_finally(xc_val try_func, xc_val catch_func, xc_val final
         
         xc_exception_frame = &finally_frame;
         
-        push_stack_frame("finally_handler", __FILE__, __LINE__);
-        
+        /* 使用setjmp捕获finally中可能抛出的异常 */
         if (setjmp(finally_frame.jmp) == 0) {
-            finally_result = invoke(finally_func, 0);
+            xc_val finally_result = invoke(finally_func, 0);
+            
+            /* 如果finally返回非NULL值且之前没有结果，使用finally的结果 */
+            if (finally_result != NULL && result == NULL) {
+                result = finally_result;
+            }
         } else {
-            finally_error = finally_frame.exception;
+            /* finally中抛出了异常 */
+            error = finally_frame.exception;
             finally_frame.exception = NULL;
+            
+            /* finally中的异常优先级高于之前的异常 */
+            exception_occurred = true;
         }
         
-        pop_stack_frame();
-        
-        /* 恢复之前的异常帧 */
+        /* 恢复异常帧 */
         xc_exception_frame = finally_frame.prev;
         
-        /* 如果finally块抛出异常，它优先于之前的异常 */
-        if (finally_error) {
-            /* 如果之前有异常且两者都是EXCEPTION类型，设置异常链 */
-            if (error && is(finally_error, XC_TYPE_EXCEPTION) && is(error, XC_TYPE_EXCEPTION)) {
-                /* 设置原始异常为当前异常的cause */
-                call(finally_error, "setCause", error);
-            }
-            error = finally_error;
-            frame.handled = false;
-            result = NULL;
-        }
+        /* 弹出栈帧 */
+        pop_stack_frame();
     }
     
-    pop_stack_frame();  /* 移除try_catch_finally帧 */
-    
-    /* 恢复之前的异常帧 */
+    /* 恢复异常帧 */
     xc_exception_frame = frame.prev;
     
-    /* 如果有未处理的异常，重新抛出 */
-    if (error && !frame.handled) {
-        _xc_thread_state.current_error = error;
-        throw(error);
-        return NULL;  /* 这行代码应该不会执行，因为throw会导致非本地跳转 */
+    /* 弹出栈帧 */
+    pop_stack_frame();
+    
+    /* 如果发生了异常且没有被处理，重新抛出 */
+    if (exception_occurred && error) {
+        throw_with_rethrow(error);
     }
     
     return result;
@@ -584,9 +680,9 @@ static xc_val invoke(xc_val func, int argc, ...) {
     }
     
     /* 获取函数名（如果存在） */
-    const char* func_name = "anonymous_function";
+    const char* func_name = "<function>";
     /* 尝试通过属性获取函数名 */
-    xc_val name_prop = dot(func, "name");
+    xc_val name_prop = xc_dot(func, "name");
     if (name_prop && is(name_prop, XC_TYPE_STRING)) {
         func_name = (const char*)name_prop;
     }
@@ -625,25 +721,25 @@ static int is(xc_val val, int type) {
 }
 
 static xc_val call(xc_val obj, const char* method, ...) {
-    printf("DEBUG call: obj=%p, method=%s\n", obj, method);
+    XC_LOG_DEBUG("call: obj=%p, method=%s", obj, method);
     if (!obj || !method) {
-        printf("DEBUG call: invalid parameters\n");
+        XC_LOG_DEBUG("call: invalid parameters");
         return NULL;
     }
     
     /* 查找方法 */
     int type = type_of(obj);
-    printf("DEBUG call: type=%d\n", type);
+    XC_LOG_DEBUG("call: type=%d", type);
     xc_method_func func = find_method(type, method);
     if (!func) {
         /* 方法未找到 */
-        printf("DEBUG call: method not found\n");
+        XC_LOG_DEBUG("call: method not found");
         return NULL;
     }
     
     /* 添加栈帧 */
     char method_desc[128];
-    snprintf(method_desc, sizeof(method_desc), "%s.%s", 
+    snprintf(method_desc, sizeof(method_desc), "%s.%s",
              (type >= 0 && type < 16) ? "Object" : "Unknown", method);
     push_stack_frame(method_desc, __FILE__, __LINE__);
     
@@ -654,9 +750,9 @@ static xc_val call(xc_val obj, const char* method, ...) {
     va_end(args);
     
     /* 调用方法 */
-    printf("DEBUG call: calling method func=%p, obj=%p, arg=%p\n", func, obj, arg);
+    XC_LOG_DEBUG("call: calling method func=%p, obj=%p, arg=%p", func, obj, arg);
     xc_val result = func(obj, arg);
-    printf("DEBUG call: method returned result=%p\n", result);
+    XC_LOG_DEBUG("call: method returned result=%p", result);
     
     /* 移除栈帧 */
     pop_stack_frame();
@@ -666,7 +762,7 @@ static xc_val call(xc_val obj, const char* method, ...) {
 
 static xc_val catch_handler(xc_val this_obj, int argc, xc_val* argv, xc_val closure) {
     if (argc < 1 || !argv[0] || !is(argv[0], XC_TYPE_FUNC)) {
-        xc_val error = create(XC_TYPE_EXCEPTION, XC_ERR_INVALID_ARGUMENT, "catch需要一个函数参数");
+        xc_val error = create(XC_TYPE_EXCEPTION, "catch需要一个函数参数");
         throw(error);
         return NULL;
     }
@@ -685,7 +781,7 @@ static xc_val catch_handler(xc_val this_obj, int argc, xc_val* argv, xc_val clos
 
 static xc_val finally_handler(xc_val this_obj, int argc, xc_val* argv, xc_val closure) {
     if (argc < 1 || !argv[0] || !is(argv[0], XC_TYPE_FUNC)) {
-        xc_val error = create(XC_TYPE_EXCEPTION, XC_ERR_INVALID_ARGUMENT, "finally需要一个函数参数");
+        xc_val error = create(XC_TYPE_EXCEPTION, "finally需要一个函数参数");
         throw(error);
         return NULL;
     }
@@ -702,7 +798,7 @@ static xc_val finally_handler(xc_val this_obj, int argc, xc_val* argv, xc_val cl
 
 static xc_val try_handler(xc_val this_obj, int argc, xc_val* argv, xc_val closure) {
     if (argc < 1 || !argv[0] || !is(argv[0], XC_TYPE_FUNC)) {
-        xc_val error = create(XC_TYPE_EXCEPTION, XC_ERR_INVALID_ARGUMENT, "try需要一个函数参数");
+        xc_val error = create(XC_TYPE_EXCEPTION, "try需要一个函数参数");
         throw(error);
         return NULL;
     }
@@ -817,8 +913,11 @@ xc_object_t *xc_error_get_stack_trace(xc_runtime_t *rt, xc_object_t *error) {
 
 /* use GCC FEATURE */
 void __attribute__((constructor)) xc_auto_init(void) {
-    printf("DEBUG xc_auto_init()\n");//TODO log-level
+    XC_LOG_DEBUG("xc_auto_init()");
     xc_gc_init_auto(&xc, NULL);//@see xc_gc.c
+    
+    // 初始化方法缓存
+    init_method_cache();
 
     xc_register_string_type(&xc);
     xc_register_boolean_type(&xc);
@@ -830,7 +929,11 @@ void __attribute__((constructor)) xc_auto_init(void) {
 }
 
 void __attribute__((destructor)) xc_auto_shutdown(void) {
-    printf("DEBUG xc_auto_shutdown()\n");//TODO log-level
+    XC_LOG_DEBUG("xc_auto_shutdown()");
+    
+    // 清理方法缓存
+    clear_method_cache();
+    
     xc_gc();
     xc_gc_shutdown(&xc);
 }
@@ -863,7 +966,7 @@ xc_runtime_t xc = {
     .register_method = register_method,
     .create = create,
     .call = call,
-    .dot = dot,
+    .dot = xc_dot,
     .invoke = invoke,
     
     .try_catch_finally = try_catch_finally,

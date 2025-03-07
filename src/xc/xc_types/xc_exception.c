@@ -145,7 +145,18 @@ static xc_val xc_exception_set_cause(xc_val self, xc_val arg) {
     
     /* 只有当arg是异常对象时才设置cause */
     if (arg && ((xc_object_t *)arg)->type_id == XC_TYPE_EXCEPTION) {
+        /* 打印调试信息 */
+        printf("调试: 设置cause异常，self=%p, arg=%p\n", self, arg);
         exception->cause = (struct xc_exception *)arg;
+        
+        /* 打印设置后的状态 */
+        printf("调试: 设置后，exception->cause=%p\n", exception->cause);
+        
+        /* 验证cause消息 */
+        xc_exception_t *cause = (xc_exception_t *)arg;
+        if (cause->message) {
+            printf("调试: cause异常消息='%s'\n", cause->message);
+        }
     }
     
     return self;
@@ -158,6 +169,15 @@ static xc_val xc_exception_get_cause_method(xc_val self, xc_val arg) {
     }
     
     xc_exception_t *exception = (xc_exception_t *)self;
+    /* 打印调试信息 */
+    printf("调试: 获取cause异常，self=%p, cause=%p\n", self, exception->cause);
+    
+    /* 如果cause非空，打印其消息 */
+    if (exception->cause && exception->cause->message) {
+        printf("调试: cause异常消息='%s'\n", exception->cause->message);
+    }
+    
+    /* 返回cause异常对象 */
     return (xc_val)exception->cause;
 }
 

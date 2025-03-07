@@ -500,6 +500,42 @@ void xc_release(xc_val obj);
 #define XC_ERR_ASSERTION 14     /* 断言错误 */
 #define XC_ERR_USER 15          /* 用户自定义错误 */
 
+/* 方法查找缓存结构 */
+typedef struct {
+    unsigned int key;      // 哈希键（type_id和method_name的组合）
+    xc_method_func value;  // 方法函数指针
+    int age;               // 用于LRU替换策略
+} method_cache_entry_t;
+
+// 缓存大小定义
+#ifndef METHOD_CACHE_SIZE
+#define METHOD_CACHE_SIZE 16
+#endif
+
+/* 日志级别常量 */
+enum {
+    XC_LOG_LEVEL_NONE  = 0,
+    XC_LOG_LEVEL_ERROR = 1,
+    XC_LOG_LEVEL_WARN  = 2,
+    XC_LOG_LEVEL_INFO  = 3,
+    XC_LOG_LEVEL_DEBUG = 4
+};
+
+// 设置当前日志级别（可通过配置修改）
+#ifndef XC_LOG_LEVEL
+#define XC_LOG_LEVEL XC_LOG_LEVEL_WARN
+#endif
+
+// 日志宏
+#define XC_LOG_ERROR(fmt, ...) \
+    do { if (XC_LOG_LEVEL >= XC_LOG_LEVEL_ERROR) printf("ERROR: " fmt "\n", ##__VA_ARGS__); } while (0)
+#define XC_LOG_WARN(fmt, ...) \
+    do { if (XC_LOG_LEVEL >= XC_LOG_LEVEL_WARN) printf("WARN: " fmt "\n", ##__VA_ARGS__); } while (0)
+#define XC_LOG_INFO(fmt, ...) \
+    do { if (XC_LOG_LEVEL >= XC_LOG_LEVEL_INFO) printf("INFO: " fmt "\n", ##__VA_ARGS__); } while (0)
+#define XC_LOG_DEBUG(fmt, ...) \
+    do { if (XC_LOG_LEVEL >= XC_LOG_LEVEL_DEBUG) printf("DEBUG: " fmt "\n", ##__VA_ARGS__); } while (0)
+
 /* 函数处理器类型定义 */
 typedef xc_val (*xc_function_handler)(xc_val this_obj, int argc, xc_val* argv, xc_val closure);
 

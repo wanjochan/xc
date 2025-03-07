@@ -11,8 +11,9 @@
 
 /* 类型ID定义 */
 /* 核心类型区间 */
-#define XC_TYPE_UNKNOWN     -2
-#define XC_TYPE_UNDEFINED   -1
+#define XC_TYPE_UNKNOWN     -2//
+#define XC_TYPE_UNDEFINED   -1//
+//XC_TYPE_VOID ? how about?
 #define XC_TYPE_NULL         2
 #define XC_TYPE_BOOL         3
 #define XC_TYPE_NUMBER       4
