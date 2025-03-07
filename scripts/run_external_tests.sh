@@ -29,7 +29,7 @@ mkdir -p "${BIN_DIR}"
 rm -f "${BIN_DIR}/test_external.exe"
 
 # 编译外部测试
-echo "编译XC外部测试程序..."
+echo "run_external_tests.sh: 编译XC外部测试程序..."
 
 # 编译测试框架
 ${COSMOCC} ${CFLAGS} -c "${EXTERNAL_TEST_DIR}/test_utils.c" -o "${EXTERNAL_TEST_DIR}/test_utils.o"
@@ -43,17 +43,17 @@ TEST_FILES=(
 )
 
 for TEST_FILE in "${TEST_FILES[@]}"; do
-    echo "编译外部测试文件: ${TEST_FILE}"
+    echo "run_external_tests.sh: 编译外部测试文件: ${TEST_FILE}"
     TEST_BASENAME=$(basename "${TEST_FILE}" .c)
     ${COSMOCC} ${CFLAGS} -c "${TEST_FILE}" -o "${EXTERNAL_TEST_DIR}/${TEST_BASENAME}.o"
 done
 
 # 编译主测试文件
-echo "编译主测试文件: ${EXTERNAL_TEST_DIR}/test_xc_main.c"
+echo "run_external_tests.sh: 编译主测试文件: ${EXTERNAL_TEST_DIR}/test_xc_main.c"
 ${COSMOCC} ${CFLAGS} -c "${EXTERNAL_TEST_DIR}/test_xc_main.c" -o "${EXTERNAL_TEST_DIR}/test_xc_main.o"
 
 # 链接测试程序
-echo "链接外部测试程序..."
+echo "run_external_tests.sh: 链接外部测试程序..."
 ${COSMOCC} -o "${BIN_DIR}/test_external.exe" \
     "${EXTERNAL_TEST_DIR}/test_utils.o" \
     "${EXTERNAL_TEST_DIR}/test_xc_array.o" \
@@ -64,11 +64,11 @@ ${COSMOCC} -o "${BIN_DIR}/test_external.exe" \
     -L${LIB_DIR} -lxc
 
 # 显示编译结果
-echo -e "\n生成的外部测试可执行文件:"
+echo -e "\nrun_external_tests.sh: 生成的外部测试可执行文件:"
 ls -la "${BIN_DIR}/test_external.exe"
 
 # 运行测试
-echo -e "\n运行外部测试程序: ${BIN_DIR}/test_external.exe\n"
+echo -e "\nrun_external_tests.sh: 运行外部测试程序: ${BIN_DIR}/test_external.exe\n"
 "${BIN_DIR}/test_external.exe"
 
-echo -e "\n外部测试完成!" 
+echo -e "\nrun_external_tests.sh: 外部测试完成!" 

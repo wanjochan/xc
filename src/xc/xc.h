@@ -1,9 +1,10 @@
 #ifndef XC_H
 #define XC_H
 
+//DO NOT change this file until PM approved
 //@ref build_libxc.sh: xc.h => libxc.h for libxc.a
 
-#include "cosmopolitan.h" //will change to infrax in later versions
+#include "cosmopolitan.h" //will change to infrax in later versionss
 
 #define XC_FALSE 0
 #define XC_TRUE 1
@@ -53,16 +54,16 @@ typedef void (*xc_cleaner_func)(void);
 typedef xc_val (*xc_creator_func)(int type, va_list args);
 typedef int (*xc_destroy_func)(xc_val obj);
 typedef void (*xc_marker_func)(xc_val obj, void (*mark_func)(xc_val));
-typedef void* (*xc_allocator_func)(size_t size);
+typedef xc_val (*xc_allocator_func)(size_t size);
 typedef xc_val (*xc_method_func)(xc_val self, xc_val arg);
 
-/* 异常处理器结构 */
-typedef struct xc_exception_handler {
-    jmp_buf env;                     /* 保存的环境 */
-    xc_val catch_func;               /* catch处理器 */
-    xc_val finally_func;             /* finally处理器 */
-    struct xc_exception_handler* prev; /* 链接到前一个处理器 */
-} xc_exception_handler_t;
+// /* 异常处理器结构 */
+// typedef struct xc_exception_handler {
+//     jmp_buf env;                     /* 保存的环境 */
+//     xc_val catch_func;               /* catch处理器 */
+//     xc_val finally_func;             /* finally处理器 */
+//     struct xc_exception_handler* prev; /* 链接到前一个处理器 */
+// } xc_exception_handler_t;
 
 /* 类型生命周期管理结构 */
 typedef struct {
@@ -102,9 +103,6 @@ typedef struct xc_runtime_t {
     
     /* internal */
     void (*gc)(void);
-    // void (*init)(void);
-    // void (*shutdown)(void);
-    
 } xc_runtime_t;
 
 /* 全局运行时对象单例 */

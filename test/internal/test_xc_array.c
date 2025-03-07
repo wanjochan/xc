@@ -38,7 +38,7 @@ static void test_array_create() {
     
     // Get the length of the array
     xc_val length = rt->call(array, "length");
-    TEST_ASSERT(length == 3, "Array should have length 3");
+    TEST_ASSERT((long)length == 3, "Array should have length 3");
     
     // Check element types
     xc_val elem0 = rt->call(array, "get", 0);

@@ -2,27 +2,15 @@
 #include "xc_gc.h"
 #include "xc_internal.h"
 
-
-/* ===== 前置声明 ===== */
-
-void xc_register_string_type(xc_runtime_t *rt);
-void xc_register_boolean_type(xc_runtime_t *rt);
-void xc_register_number_type(xc_runtime_t *rt);
-void xc_register_array_type(xc_runtime_t *rt);
-void xc_register_object_type(xc_runtime_t *rt);
-void xc_register_function_type(xc_runtime_t *rt);
-
 /* 按顺序初始化所有基本类型 */
 void xc_types_init(void) {
-
-    /* 注册基本类型 - 顺序很重要 */
     xc_register_string_type(&xc);
     xc_register_boolean_type(&xc);
     xc_register_number_type(&xc);
     xc_register_array_type(&xc);
     xc_register_object_type(&xc);
     xc_register_function_type(&xc);
-    //xc_register_error_type(&xc);//TODO!
+    xc_register_error_type(&xc);
 }
 
 /* use GCC FEATURE */
@@ -535,7 +523,7 @@ static int find_type_id_by_name(const char* name) {
 }
 
 /* 注册类型 */
-static int register_type(const char* name, xc_type_lifecycle_t* lifecycle) {
+int xc_register_type(const char* name, xc_type_lifecycle_t* lifecycle) {
     if (type_registry.count >= 16) {
         return -1;
     }
@@ -1203,7 +1191,7 @@ xc_runtime_t xc = {
     .alloc_object = alloc_object,
     .type_of = type_of,
     .is = is,
-    .register_type = register_type,
+    .register_type = xc_register_type,
     .get_type_id = get_type_id,
     .register_method = register_method,
     .create = create,
@@ -1248,3 +1236,85 @@ static void pop_stack_frame(void) {
     
     free(frame);
 }
+
+
+/* 
+ * Compare two XC objects for equality
+ * Returns true if objects are equal, false otherwise
+ */
+bool xc_equal(xc_runtime_t *rt, xc_object_t *a, xc_object_t *b) {
+    /* NULL check */
+    if (!a && !b) return true;
+    if (!a || !b) return false;
+    
+    /* Same object check */
+    if (a == b) return true;
+    
+    /* Type check */
+    if (a->type != b->type) return false;
+    
+    /* Delegate to type-specific equal function */
+    if (a->type && a->type->equal) {
+        return a->type->equal(rt, a, b);
+    }
+    
+    /* Default to pointer comparison */
+    return a == b;
+}
+
+/*
+ * Compare two XC objects for ordering
+ * Returns -1 if a < b, 0 if a == b, 1 if a > b
+ */
+int xc_compare(xc_runtime_t *rt, xc_object_t *a, xc_object_t *b) {
+    /* NULL check */
+    if (!a && !b) return 0;
+    if (!a) return -1;
+    if (!b) return 1;
+    
+    /* Same object check */
+    if (a == b) return 0;
+    
+    /* Type check - different types are ordered by type ID */
+    if (a->type != b->type) {
+        return (a->type < b->type) ? -1 : 1;
+    }
+    
+    /* Delegate to type-specific compare function */
+    if (a->type && a->type->compare) {
+        return a->type->compare(rt, a, b);
+    }
+    
+    /* Default to pointer comparison */
+    return (a < b) ? -1 : (a > b) ? 1 : 0;
+}
+
+/*
+ * Strict equality check (same type and value)
+ */
+bool xc_strict_equal(xc_runtime_t *rt, xc_object_t *a, xc_object_t *b) {
+    /* NULL check */
+    if (!a && !b) return true;
+    if (!a || !b) return false;
+    
+    /* Type check */
+    if (a->type != b->type) return false;
+    
+    /* Delegate to type-specific equal function */
+    if (a->type && a->type->equal) {
+        return a->type->equal(rt, a, b);
+    }
+    
+    /* Default to pointer comparison */
+    return a == b;
+}
+
+/* 
+ * Function to invoke a function object
+ * This is a stub implementation that just returns NULL
+ * The real implementation would be in xc_function.c
+ */
+xc_val xc_function_invoke(xc_val func, xc_val this_obj, int argc, xc_val* argv) {
+    /* This is a stub implementation */
+    return NULL;
+} 

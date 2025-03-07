@@ -1,4 +1,3 @@
-
 #include "../xc.h"
 #include "../xc_gc.h"
 #include "../xc_internal.h"
@@ -330,23 +329,33 @@ static xc_object_t *xc_error_to_string(xc_runtime_t *rt, xc_object_t *obj) {
 
 /* Register the error type */
 void xc_register_error_type(xc_runtime_t *rt) {
+    /* 定义类型生命周期管理接口 */
+    static xc_type_lifecycle_t lifecycle = {
+        .initializer = NULL,
+        .cleaner = NULL,
+        .creator = NULL,  /* Error has its own creation functions */
+        .destroyer = (xc_destroy_func)xc_error_free,
+        .marker = (xc_marker_func)xc_error_mark,
+        .allocator = NULL
+    };
+    
     xc_runtime_extended_t *ext_rt = (xc_runtime_extended_t *)rt;
     
     /* Check if we already have an error type */
     if (ext_rt->error_type) return;
     
-    /* Create a new type descriptor */
-    xc_type_t *type = (xc_type_t *)malloc(sizeof(xc_type_t));
-    if (!type) return;
+    /* 注册类型 */
+    int type_id = xc_register_type("error", &lifecycle);
     
-    /* Initialize type descriptor */
-    type->name = "Error";
-    type->flags = XC_TYPE_INTERNAL;
-    type->free = xc_error_free;
-    type->mark = xc_error_mark;
-    type->equal = NULL;      // Default equality comparison
-    type->compare = NULL;    // Default ordering comparison
+    /* Create error type descriptor */
+    static xc_type_t error_type = {
+        .name = "error",
+        .flags = XC_TYPE_EXCEPTION,
+        .mark = xc_error_mark,
+        .free = xc_error_free,
+        .equal = NULL,  /* Use default equality */
+        .compare = NULL  /* Use default comparison */
+    };
     
-    /* Store the error type */
-    ext_rt->error_type = type;
+    ext_rt->error_type = &error_type;
 }

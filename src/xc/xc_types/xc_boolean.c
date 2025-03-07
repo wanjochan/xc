@@ -58,6 +58,18 @@ static xc_type_t boolean_type = {
 
 /* Register boolean type */
 void xc_register_boolean_type(xc_runtime_t *rt) {
+    /* 定义类型生命周期管理接口 */
+    static xc_type_lifecycle_t lifecycle = {
+        .initializer = NULL,
+        .cleaner = NULL,
+        .creator = NULL,  /* Boolean has its own creation functions */
+        .destroyer = (xc_destroy_func)boolean_free,
+        .marker = (xc_marker_func)boolean_mark,
+        .allocator = NULL
+    };
+    
+    /* 注册类型 */
+    int type_id = xc_register_type("boolean", &lifecycle);
     XC_RUNTIME_EXT(rt)->boolean_type = &boolean_type;
 }
 

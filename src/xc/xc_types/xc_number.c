@@ -54,6 +54,18 @@ static xc_type_t number_type = {
 
 /* Register number type */
 void xc_register_number_type(xc_runtime_t *rt) {
+    /* 定义类型生命周期管理接口 */
+    static xc_type_lifecycle_t lifecycle = {
+        .initializer = NULL,
+        .cleaner = NULL,
+        .creator = NULL,  /* Number has its own creation functions */
+        .destroyer = (xc_destroy_func)number_free,
+        .marker = (xc_marker_func)number_mark,
+        .allocator = NULL
+    };
+    
+    /* 注册类型 */
+    int type_id = xc_register_type("number", &lifecycle);
     XC_RUNTIME_EXT(rt)->number_type = &number_type;
 }
 

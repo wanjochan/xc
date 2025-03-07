@@ -143,6 +143,18 @@ static xc_type_t array_type = {
 
 /* Register array type */
 void xc_register_array_type(xc_runtime_t *rt) {
+    /* 定义类型生命周期管理接口 */
+    static xc_type_lifecycle_t lifecycle = {
+        .initializer = NULL,
+        .cleaner = NULL,
+        .creator = NULL,  /* Array has its own creation functions */
+        .destroyer = (xc_destroy_func)array_free,
+        .marker = (xc_marker_func)array_mark,
+        .allocator = NULL
+    };
+    
+    /* 注册类型 */
+    int type_id = xc_register_type("array", &lifecycle);
     XC_RUNTIME_EXT(rt)->array_type = &array_type;
 }
 

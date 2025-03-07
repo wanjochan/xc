@@ -52,8 +52,7 @@ SOURCE_FILES=(
     "${SRC_DIR}/xc/xc_types/xc_function.c"
     "${SRC_DIR}/xc/xc_types/xc_array.c"
     "${SRC_DIR}/xc/xc_types/xc_object.c"
-    "${SRC_DIR}/xc/xc_types/xc_compare.c"
-    "${SRC_DIR}/xc/xc_vm.c"
+    # "${SRC_DIR}/xc/xc_types/xc_vm.c"
     
     # 标准库
     "${SRC_DIR}/xc/xc_std/xc_std_console.c"
@@ -88,6 +87,7 @@ EOF
 
 # 将 xc.h 中的内容添加到 libxc.h 中，但排除 #include 语句和头文件保护宏
 sed -n '/^#ifndef/,/^#include/d; /^#include/d; /^#endif/d; p' "${SRC_DIR}/xc/xc.h" >> "${INCLUDE_DIR}/libxc.h"
+
 
 # 添加结尾保护宏
 echo -e "\n#endif /* LIBXC_H */" >> "${INCLUDE_DIR}/libxc.h"

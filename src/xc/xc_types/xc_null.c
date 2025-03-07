@@ -51,6 +51,18 @@ static xc_type_t null_type = {
 
 /* Register null type */
 void xc_register_null_type(xc_runtime_t *rt) {
+    /* 定义类型生命周期管理接口 */
+    static xc_type_lifecycle_t lifecycle = {
+        .initializer = NULL,
+        .cleaner = NULL,
+        .creator = NULL,  /* Null has its own creation functions */
+        .destroyer = (xc_destroy_func)null_free,
+        .marker = (xc_marker_func)null_mark,
+        .allocator = NULL
+    };
+    
+    /* 注册类型 */
+    int type_id = xc_register_type("null", &lifecycle);
     XC_RUNTIME_EXT(rt)->null_type = &null_type;
 
     /* Create singleton null instance if not already created */

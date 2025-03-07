@@ -30,7 +30,7 @@ mkdir -p "${BIN_DIR}"
 rm -f "${BIN_DIR}/test_internal.exe"
 
 # 编译内部测试
-echo "编译XC内部测试程序..."
+echo "run_internal_tests.sh: 编译XC内部测试程序..."
 
 # 编译测试框架
 ${COSMOCC} ${CFLAGS} -c "${INTERNAL_TEST_DIR}/test_utils.c" -o "${INTERNAL_TEST_DIR}/test_utils.o"
@@ -41,24 +41,24 @@ TEST_FILES=(
 )
 
 for TEST_FILE in "${TEST_FILES[@]}"; do
-    echo "编译内部测试文件: ${TEST_FILE}"
+    echo "run_internal_tests.sh: 编译内部测试文件: ${TEST_FILE}"
     TEST_BASENAME=$(basename "${TEST_FILE}" .c)
     ${COSMOCC} ${CFLAGS} -c "${TEST_FILE}" -o "${INTERNAL_TEST_DIR}/${TEST_BASENAME}.o"
 done
 
 # 链接测试程序
-echo "链接内部测试程序..."
+echo "run_internal_tests.sh: 链接内部测试程序..."
 ${COSMOCC} -o "${BIN_DIR}/test_internal.exe" \
     "${INTERNAL_TEST_DIR}/test_utils.o" \
     "${INTERNAL_TEST_DIR}/test_xc_array.o" \
     "${LIB_DIR}/libxc.a"
 
 # 显示编译结果
-echo -e "\n生成的内部测试可执行文件:"
+echo -e "\nrun_internal_tests.sh: 生成的内部测试可执行文件:"
 ls -la "${BIN_DIR}/test_internal.exe"
 
 # 运行测试
-echo -e "\n运行内部测试程序: ${BIN_DIR}/test_internal.exe\n"
+echo -e "\nrun_internal_tests.sh: 运行内部测试程序: ${BIN_DIR}/test_internal.exe\n"
 "${BIN_DIR}/test_internal.exe"
 
-echo -e "\n内部测试完成!" 
+echo -e "\nrun_internal_tests.sh: 内部测试结束!" 

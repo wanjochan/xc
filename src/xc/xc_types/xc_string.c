@@ -59,6 +59,18 @@ static xc_type_t string_type = {
 
 /* Register string type */
 void xc_register_string_type(xc_runtime_t *rt) {
+    /* 定义类型生命周期管理接口 */
+    static xc_type_lifecycle_t lifecycle = {
+        .initializer = NULL,
+        .cleaner = NULL,
+        .creator = NULL,  /* String has its own creation functions */
+        .destroyer = (xc_destroy_func)string_free,
+        .marker = (xc_marker_func)string_mark,
+        .allocator = NULL
+    };
+    
+    /* 注册类型 */
+    int type_id = xc_register_type("string", &lifecycle);
     XC_RUNTIME_EXT(rt)->string_type = &string_type;
 }
 

@@ -207,6 +207,9 @@ void xc_register_object_type(xc_runtime_t *rt);
 void xc_register_function_type(xc_runtime_t *rt);
 void xc_register_error_type(xc_runtime_t *rt);
 
+/* Type registration helper */
+int xc_register_type(const char *name, xc_type_lifecycle_t *lifecycle);
+
 /*
  * Type creation functions
  */

@@ -137,6 +137,18 @@ static xc_type_t object_type = {
 
 /* Register object type */
 void xc_register_object_type(xc_runtime_t *rt) {
+    /* 定义类型生命周期管理接口 */
+    static xc_type_lifecycle_t lifecycle = {
+        .initializer = NULL,
+        .cleaner = NULL,
+        .creator = NULL,  /* Object has its own creation functions */
+        .destroyer = (xc_destroy_func)object_free,
+        .marker = (xc_marker_func)object_mark,
+        .allocator = NULL
+    };
+    
+    /* 注册类型 */
+    int type_id = xc_register_type("object", &lifecycle);
     XC_RUNTIME_EXT(rt)->object_type = &object_type;
 }
 
