@@ -569,8 +569,8 @@ static __thread struct {
     size_t allocation_count; /* 分配计数，用于触发自动GC */
 } _thread_gc = {0};
 
-void xc_gc_thread_init(void);
 void xc_gc_thread_exit(void);
+void xc_gc_thread_init_auto(void);
 
 /* 全局状态结构 */
 typedef struct {

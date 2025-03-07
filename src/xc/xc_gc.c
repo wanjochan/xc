@@ -1,7 +1,7 @@
 #include "xc.h"
 #include "xc_internal.h"
 
-void xc_gc_thread_init(void) {
+void xc_gc_thread_init_auto(void) {
     if (_thread_gc.initialized) {
         return;
     }
@@ -196,10 +196,12 @@ static void gc_sweep(void) {
 }
 /* 执行垃圾回收 */
 void xc_gc(void) {
-    //ensure_thread_initialized();
-    xc_gc_thread_init();
+    xc_gc_thread_init_auto();
     
-    if (!_thread_gc.gc_first) return;
+    if (!_thread_gc.gc_first) {
+        printf("ERROR _thread_gc.gc_first is NULL, not yet init?\n");
+        return;
+    }
     
     /* 重置分配计数 */
     _thread_gc.allocation_count = 0;
@@ -647,13 +649,6 @@ bool xc_gc_is_enabled(xc_runtime_t *rt) {
     return gc->enabled;
 }
 
-/* Global GC function for backward compatibility */
-void xc_gc_collect(void) {
-    /* This is a placeholder for backward compatibility */
-    /* In a real implementation, we would need to get the current runtime */
-    /* and call xc_gc_run on it */
-}
-
 /* Global release function for backward compatibility */
 void xc_gc_release_object(xc_val obj) {
     /* This is a placeholder for backward compatibility */
@@ -668,6 +663,8 @@ void xc_release(xc_val obj) {
 
 /* 分配原始内存并处理GC相关逻辑 */
 void* xc_gc_allocate_raw_memory(size_t size, int type_id) {
+    xc_gc_thread_init_auto();
+    
     // 分配内存
     void* memory = malloc(size);
     if (!memory) return NULL;

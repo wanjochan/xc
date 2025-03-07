@@ -819,7 +819,7 @@ void xc_types_init(void) {
 void __attribute__((constructor)) xc_auto_init(void) {
     printf("DEBUG xc_auto_init()\n");//TODO log-level
     // 初始化GC系统
-    xc_gc_init(&xc, NULL);
+    xc_gc_init(&xc, NULL);//@see xc_gc.c
     // 初始化类型系统
     xc_types_init();
 }
