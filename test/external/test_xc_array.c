@@ -57,6 +57,8 @@ void test_array_basic(void) {
     
     printf("Array test completed successfully.\n");
     
+    // 注意：在XC中，对象由GC自动管理，不需要手动释放
+    
     test_end("Array Basic Functionality (External)");
 }
 
@@ -73,6 +75,7 @@ void test_array_advanced(void) {
     for (int i = 0; i < 5; i++) {
         xc_val num = xc.new(XC_TYPE_NUMBER, (double)i);
         xc.call(arr, "push", num);
+        // 注意：在XC中，对象由GC自动管理，不需要手动释放
     }
     
     // Test slice operation
@@ -112,5 +115,7 @@ void test_array_advanced(void) {
     
     printf("Array advanced operations test completed successfully.\n");
     
+    // 注意：在XC中，对象由GC自动管理，不需要手动释放
+    
     test_end("Array Advanced Operations (External)");
-} 
+}

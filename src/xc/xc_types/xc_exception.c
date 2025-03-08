@@ -1,7 +1,4 @@
-#include <stdio.h>
-#include <stdlib.h>
 #include "../xc_internal.h"
-#include <setjmp.h>
 
 /* 异常帧链表头 - 使用外部声明而不是定义 */
 xc_exception_frame_t *xc_exception_frame = NULL;

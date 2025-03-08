@@ -104,3 +104,41 @@ typedef struct xc_runtime_t {
 extern xc_runtime_t xc;
 
 #endif /* XC_H */
+/**
+PLAN
+对象生命周期
+创建（内存分配、类型初始化）
+引用管理（引用计数增减）
+销毁（释放资源、内存回收）
+内存管理特殊场景
+永久对象（语言常量、单例）
+根对象管理（不被 GC 扫描到但需要保留的对象）
+弱引用处理（避免引用循环）
+GC 控制和优化
+强制 GC
+暂停/恢复 GC
+内存压力监控和响应
+VM 内部协作
+类型系统与 GC 协作
+对象遍历（对象图）
+线程安全和并发控制
+接口设计原则：
+完整而最小：提供足够完整的接口集，但不过度暴露内部细节
+分层设计：区分通用接口、特殊用途接口和内部接口
+职责明确：每个接口有明确的单一职责
+扩展性：设计能适应未来可能的需求变化
+
+xc_val (*alloc)(size_t size, int type_id);    // 基础内存分配
+void (*free)(xc_val obj);                      // 基础内存释放
+void (*add_ref)(xc_val obj);                   // 增加引用计数
+void (*release)(xc_val obj);                   // 减少引用计数
+int (*get_ref_count)(xc_val obj);              // 获取当前引用计数
+void (*mark_permanent)(xc_val obj);            // 标记永久对象
+void (*add_root)(xc_val *obj_ptr);             // 添加根对象
+void (*remove_root)(xc_val *obj_ptr);          // 移除根对象
+void (*mark_weak_ref)(xc_val ref);             // 标记弱引用
+void (*gc_run)(void);                          // 触发 GC
+void (*gc_enable)(void);                       // 启用 GC
+void (*gc_disable)(void);                      // 禁用 GC
+bool (*gc_is_enabled)(void);                   // 检查 GC 状态
+ */

@@ -970,9 +970,10 @@ xc_type_lifecycle_t *xc_object_type = NULL;
 xc_type_lifecycle_t *xc_function_type = NULL;
 xc_type_lifecycle_t *xc_error_type = NULL;
 
+// xc_object_t xc_gc_alloc(xc_runtime_t *rt, size_t size, int type_id);
 /* 全局运行时对象 */
 xc_runtime_t xc = {
-    // .alloc_object = xc_alloc_object,
+    // .alloc_object = xc_gc_alloc,
     .type_of = xc_typeof,
     .is = xc_is,
     .register_type = xc_register_type,

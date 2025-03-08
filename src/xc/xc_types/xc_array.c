@@ -1,10 +1,5 @@
-/*
- * xc_array.c - Array type implementation
- */
-
 #include "../xc.h"
 #include "../xc_internal.h"
-// #include "../xc_gc.h"  // Removed since we've merged it into xc.c
 
 /* Forward declarations */
 static bool array_ensure_capacity(xc_array_t *arr, size_t needed);
@@ -221,6 +216,8 @@ static xc_val array_slice_method(xc_val self, xc_val arg) {
     int start = (int)xc_number_value(rt, (xc_object_t *)start_val);
     int end = (int)xc_number_value(rt, (xc_object_t *)end_val);
     
+    printf("DEBUG array_slice_method: start=%d, end=%d\n", start, end);
+    
     return xc_array_slice(rt, (xc_object_t *)self, start, end);
 }
 
@@ -247,7 +244,7 @@ static xc_val array_join_method(xc_val self, xc_val arg) {
         return NULL;
     }
     
-    return xc_array_join(rt, (xc_object_t *)self, (xc_object_t *)arg);
+    return xc_array_join_elements(rt, (xc_object_t *)self, (xc_object_t *)arg);
 }
 
 /* Array initializer function for type system */
@@ -398,12 +395,15 @@ void xc_array_set(xc_runtime_t *rt, xc_object_t *arr, size_t index, xc_object_t 
         return;
     }
 
+    /* 如果当前位置有值，先减少引用计数 */
     if (array->items[index]) {
-        xc_gc_free(rt, array->items[index]);
+        /* 减少引用计数，但不释放对象本身 */
+        xc_gc_release(rt, array->items[index]);
     }
 
     array->items[index] = value;
     if (value) {
+        /* 增加引用计数 */
         xc_gc_add_ref(rt, value);
     }
 
@@ -485,10 +485,8 @@ xc_object_t *xc_array_shift(xc_runtime_t *rt, xc_object_t *arr) {
     array->items[array->length - 1] = NULL;
     array->length--;
     
-    /* Decrease reference count when removing from array */
-    if (value) {
-        xc_gc_release(rt, value);
-    }
+    /* 不在这里减少引用计数，因为我们要返回这个对象 */
+    /* 调用者负责在使用完毕后释放 */
     
     return value;
 }
@@ -496,10 +494,9 @@ xc_object_t *xc_array_shift(xc_runtime_t *rt, xc_object_t *arr) {
 /* Create a new array with elements from start to end (exclusive) */
 xc_object_t *xc_array_slice(xc_runtime_t *rt, xc_object_t *arr, int start, int end) {
     assert(xc_is_array(rt, arr));
-    xc_array_t *array = (xc_array_t *)arr;
     
-    /* Convert negative indices (counting from end) */
-    int length = (int)array->length;
+    xc_array_t *array = (xc_array_t *)arr;
+    size_t length = array->length;
     
     if (start < 0) {
         start = length + start;
@@ -532,6 +529,8 @@ xc_object_t *xc_array_slice(xc_runtime_t *rt, xc_object_t *arr, int start, int e
     
     /* Copy elements to the new array */
     for (int i = start; i < end; i++) {
+        // 增加引用计数，因为我们要将对象添加到新数组中
+        xc_gc_retain(rt, array->items[i]);
         xc_array_push(rt, slice, array->items[i]);
     }
     
@@ -555,11 +554,15 @@ xc_object_t *xc_array_concat(xc_runtime_t *rt, xc_object_t *arr1, xc_object_t *a
     
     /* Copy elements from first array */
     for (size_t i = 0; i < array1->length; i++) {
+        // 增加引用计数，因为我们要将对象添加到新数组中
+        xc_gc_retain(rt, array1->items[i]);
         xc_array_push(rt, result, array1->items[i]);
     }
     
     /* Copy elements from second array */
     for (size_t i = 0; i < array2->length; i++) {
+        // 增加引用计数，因为我们要将对象添加到新数组中
+        xc_gc_retain(rt, array2->items[i]);
         xc_array_push(rt, result, array2->items[i]);
     }
     
@@ -606,84 +609,108 @@ int xc_array_index_of_from(xc_runtime_t *rt, xc_object_t *arr, xc_object_t *valu
 /* Convert an object to a string representation */
 static xc_object_t *xc_to_string_internal(xc_runtime_t *rt, xc_object_t *obj) {
     if (obj == NULL) {
-        return xc_string_object_create(rt, "null");
+        return xc_string_create(rt, "null");
     }
     
-    if (xc_is_string_object(rt, obj)) {
+    if (xc_is_string(rt, obj)) {
         return xc_gc_retain(rt, obj);
     }
     
-    if (xc_is_number_object(rt, obj)) {
+    if (xc_is_number(rt, obj)) {
         char buffer[32];
-        snprintf(buffer, sizeof(buffer), "%.14g", xc_number_get_value(rt, obj));
-        return xc_string_object_create(rt, buffer);
+        snprintf(buffer, sizeof(buffer), "%.14g", xc_number_value(rt, obj));
+        return xc_string_create(rt, buffer);
     }
     
-    if (xc_is_boolean_object(rt, obj)) {
-        return xc_string_object_create(rt, xc_boolean_get_value(rt, obj) ? "true" : "false");
+    if (xc_is_boolean(rt, obj)) {
+        return xc_string_create(rt, xc_boolean_value(rt, obj) ? "true" : "false");
     }
     
-    if (xc_is_null_object(rt, obj)) {
-        return xc_string_object_create(rt, "null");
+    if (xc_is_null(rt, obj)) {
+        return xc_string_create(rt, "null");
     }
     
-    if (xc_is_array_object(rt, obj)) {
-        return xc_array_join_elements(rt, obj, xc_string_object_create(rt, ","));
+    if (xc_is_array(rt, obj)) {
+        // 为避免无限递归，我们使用简单的表示方法
+        xc_array_t *array = (xc_array_t *)obj;
+        if (array->length == 0) {
+            return xc_string_create(rt, "[]");
+        } else {
+            // 使用 join 函数，但传递一个简单的分隔符
+            // 注意：xc_array_join_elements 函数已经处理了循环引用的情况
+            return xc_array_join_elements(rt, obj, xc_string_create(rt, ","));
+        }
     }
     
     // Default for other types
-    return xc_string_object_create(rt, "[object Object]");
+    return xc_string_create(rt, "[object Object]");
 }
 
 /* Join array elements into a string */
 xc_object_t *xc_array_join_elements(xc_runtime_t *rt, xc_object_t *arr, xc_object_t *separator) {
-    if (!xc_is_array_object(rt, arr)) {
-        return xc_string_object_create(rt, "");
+    if (!xc_is_array(rt, arr)) {
+        return xc_string_create(rt, "");
     }
     
     xc_array_t *array = (xc_array_t *)arr;
     size_t length = array->length;
     
     if (length == 0) {
-        return xc_string_object_create(rt, "");
+        return xc_string_create(rt, "");
     }
     
     const char *sep_str = ",";
-    if (separator != NULL && xc_is_string_object(rt, separator)) {
-        sep_str = xc_string_get_value(rt, separator);
+    if (separator != NULL && xc_is_string(rt, separator)) {
+        sep_str = xc_string_value(rt, separator);
     }
     
-    // Calculate the total length of the result string
+    // 首先将所有元素转换为字符串并存储，避免重复转换
+    xc_object_t **str_items = (xc_object_t **)malloc(length * sizeof(xc_object_t *));
+    if (str_items == NULL) {
+        return xc_string_create(rt, "");
+    }
+    
+    // 计算结果字符串的总长度
     size_t total_length = 0;
     size_t sep_len = strlen(sep_str);
     
     for (size_t i = 0; i < length; i++) {
-        xc_object_t *str = xc_to_string_internal(rt, array->items[i]);
-        total_length += strlen(xc_string_get_value(rt, str));
-        xc_gc_release(rt, str);
+        // 避免无限递归：如果元素是数组，则用特殊表示
+        if (xc_is_array(rt, array->items[i]) && array->items[i] == arr) {
+            str_items[i] = xc_string_create(rt, "[Circular]");
+        } else {
+            str_items[i] = xc_to_string_internal(rt, array->items[i]);
+        }
+        
+        total_length += strlen(xc_string_value(rt, str_items[i]));
         
         if (i < length - 1) {
             total_length += sep_len;
         }
     }
     
-    // Allocate memory for the result string
+    // 分配结果字符串的内存
     char *result = (char *)malloc(total_length + 1);
     if (result == NULL) {
-        return xc_string_object_create(rt, "");
+        // 释放临时字符串
+        for (size_t i = 0; i < length; i++) {
+            xc_gc_release(rt, str_items[i]);
+        }
+        free(str_items);
+        return xc_string_create(rt, "");
     }
     
-    // Build the result string
+    // 构建结果字符串
     char *p = result;
     for (size_t i = 0; i < length; i++) {
-        xc_object_t *str = xc_to_string_internal(rt, array->items[i]);
-        const char *str_value = xc_string_get_value(rt, str);
+        const char *str_value = xc_string_value(rt, str_items[i]);
         size_t str_len = strlen(str_value);
         
         memcpy(p, str_value, str_len);
         p += str_len;
         
-        xc_gc_release(rt, str);
+        // 释放临时字符串
+        xc_gc_release(rt, str_items[i]);
         
         if (i < length - 1) {
             memcpy(p, sep_str, sep_len);
@@ -693,7 +720,10 @@ xc_object_t *xc_array_join_elements(xc_runtime_t *rt, xc_object_t *arr, xc_objec
     
     *p = '\0';
     
-    xc_object_t *result_obj = xc_string_object_create(rt, result);
+    // 释放临时数组
+    free(str_items);
+    
+    xc_object_t *result_obj = xc_string_create(rt, result);
     free(result);
     
     return result_obj;

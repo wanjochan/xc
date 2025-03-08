@@ -1,14 +1,5 @@
-/*
- * xc_null.c - Null type implementation
- */
-
-#include <stdlib.h>
-#include <string.h>
-#include <stdio.h>
-
 #include "../xc.h"
 #include "../xc_internal.h"
-// #include "../xc_gc.h"  // Removed since we've merged it into xc.c
 
 /* Forward declarations */
 static void null_mark(xc_runtime_t *rt, xc_object_t *obj);

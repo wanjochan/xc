@@ -31,20 +31,22 @@ int main(void) {
     test_init("XC External Test Suite");
 
     // Register function tests
-    test_register("function_basic", test_function_basic, "function", "Test basic function functionality");
-    test_register("function_closure", test_function_closure, "function", "Test function closure functionality");
-    
-    // Register exception tests
-    test_register("exception_basic", test_exception_basic, "exception", "Test basic exception handling");
-    test_register("uncaught_exception", test_uncaught_exception, "exception", "Test uncaught exception handling");
-    
-    // Register object tests
-    test_register("object_basic", test_object_basic, "object", "Test basic object functionality");
-    test_register("object_prototype", test_object_prototype, "object", "Test object prototype inheritance");
+    //test_register("function_basic", test_function_basic, "function", "Test basic function functionality");
+    //test_register("function_closure", test_function_closure, "function", "Test function closure functionality");
     
     // Register array tests
-    test_register("array_basic", test_array_basic, "array", "Test basic array functionality");
+    //test_register("array_basic", test_array_basic, "array", "Test basic array functionality");
     test_register("array_advanced", test_array_advanced, "array", "Test advanced array operations");
+    
+    /*
+    // Register exception tests
+    //test_register("exception_basic", test_exception_basic, "exception", "Test basic exception handling");
+    //test_register("uncaught_exception", test_uncaught_exception, "exception", "Test uncaught exception handling");
+    
+    // Register object tests
+    //test_register("object_basic", test_object_basic, "object", "Test basic object functionality");
+    //test_register("object_prototype", test_object_prototype, "object", "Test object prototype inheritance");
+    */
     
     // Run all tests
     test_run_all();

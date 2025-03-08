@@ -1,10 +1,4 @@
-/*
- * xc_number.c - Number type implementation
- */
-
 #include "../xc.h"
-#include "../xc_internal.h"
-// #include "../xc_gc.h"  // Removed since we've merged it into xc.c
 #include "../xc_internal.h"
 
 /* Forward declarations */
