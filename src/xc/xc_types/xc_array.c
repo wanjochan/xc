@@ -188,6 +188,68 @@ static xc_val array_push_method(xc_val self, xc_val arg) {
     return self; // 返回数组自身
 }
 
+static xc_val array_pop_method(xc_val self, xc_val arg) {
+    xc_runtime_t *rt = &xc;
+    printf("DEBUG array_pop_method called, self=%p\n", self);
+    return xc_array_pop(rt, (xc_object_t *)self);
+}
+
+static xc_val array_slice_method(xc_val self, xc_val arg) {
+    xc_runtime_t *rt = &xc;
+    printf("DEBUG array_slice_method called, self=%p, arg=%p\n", self, arg);
+    
+    // 参数应该是一个数组，包含起始和结束索引
+    if (!arg || !rt->is(arg, XC_TYPE_ARRAY)) {
+        printf("DEBUG array_slice_method: arg is not an array\n");
+        return NULL;
+    }
+    
+    // 获取起始索引
+    xc_val start_val = xc_array_get(rt, (xc_object_t *)arg, 0);
+    if (!start_val || !rt->is(start_val, XC_TYPE_NUMBER)) {
+        printf("DEBUG array_slice_method: start index is not a number\n");
+        return NULL;
+    }
+    
+    // 获取结束索引
+    xc_val end_val = xc_array_get(rt, (xc_object_t *)arg, 1);
+    if (!end_val || !rt->is(end_val, XC_TYPE_NUMBER)) {
+        printf("DEBUG array_slice_method: end index is not a number\n");
+        return NULL;
+    }
+    
+    int start = (int)xc_number_value(rt, (xc_object_t *)start_val);
+    int end = (int)xc_number_value(rt, (xc_object_t *)end_val);
+    
+    return xc_array_slice(rt, (xc_object_t *)self, start, end);
+}
+
+static xc_val array_concat_method(xc_val self, xc_val arg) {
+    xc_runtime_t *rt = &xc;
+    printf("DEBUG array_concat_method called, self=%p, arg=%p\n", self, arg);
+    
+    // 参数应该是一个数组
+    if (!arg || !rt->is(arg, XC_TYPE_ARRAY)) {
+        printf("DEBUG array_concat_method: arg is not an array\n");
+        return NULL;
+    }
+    
+    return xc_array_concat(rt, (xc_object_t *)self, (xc_object_t *)arg);
+}
+
+static xc_val array_join_method(xc_val self, xc_val arg) {
+    xc_runtime_t *rt = &xc;
+    printf("DEBUG array_join_method called, self=%p, arg=%p\n", self, arg);
+    
+    // 参数应该是一个字符串，表示分隔符
+    if (!arg || !rt->is(arg, XC_TYPE_STRING)) {
+        printf("DEBUG array_join_method: arg is not a string\n");
+        return NULL;
+    }
+    
+    return xc_array_join(rt, (xc_object_t *)self, (xc_object_t *)arg);
+}
+
 /* Array initializer function for type system */
 static void array_initializer() {
     xc_runtime_t *rt = &xc;
@@ -197,10 +259,20 @@ static void array_initializer() {
     printf("DEBUG array_initializer: length method at %p\n", array_length_method);
     printf("DEBUG array_initializer: get method at %p\n", array_get_method);
     printf("DEBUG array_initializer: push method at %p\n", array_push_method);
+    printf("DEBUG array_initializer: pop method at %p\n", array_pop_method);
+    printf("DEBUG array_initializer: slice method at %p\n", array_slice_method);
+    printf("DEBUG array_initializer: concat method at %p\n", array_concat_method);
+    printf("DEBUG array_initializer: join method at %p\n", array_join_method);
+    
     /* 注册数组方法 */
     rt->register_method(XC_TYPE_ARRAY, "length", array_length_method);
     rt->register_method(XC_TYPE_ARRAY, "get", array_get_method);
     rt->register_method(XC_TYPE_ARRAY, "push", array_push_method);
+    rt->register_method(XC_TYPE_ARRAY, "pop", array_pop_method);
+    rt->register_method(XC_TYPE_ARRAY, "slice", array_slice_method);
+    rt->register_method(XC_TYPE_ARRAY, "concat", array_concat_method);
+    rt->register_method(XC_TYPE_ARRAY, "join", array_join_method);
+    
     printf("DEBUG array_initializer: methods registered\n");
 }
 
@@ -215,10 +287,8 @@ void xc_register_array_type(xc_runtime_t *rt) {
     xc_array_type = &array_type;
     printf("DEBUG xc_register_array_type: set array_type to %p\n", xc_array_type);
     
-    // /* 注册数组方法 */
-    // rt->register_method(XC_TYPE_ARRAY, "length", array_length_method);
-    // rt->register_method(XC_TYPE_ARRAY, "get", array_get_method);
-    // rt->register_method(XC_TYPE_ARRAY, "push", array_push_method);
+    /* 调用初始化函数注册数组方法 */
+    array_initializer();
 }
 
 /* Ensure array has enough capacity */
@@ -369,11 +439,9 @@ xc_object_t *xc_array_pop(xc_runtime_t *rt, xc_object_t *arr) {
     array->items[array->length - 1] = NULL;
     array->length--;
 
-    /* Decrease reference count when removing from array */
-    if (value) {
-        xc_gc_release(rt, value);
-    }
-
+    /* 不在这里减少引用计数，因为我们要返回这个对象 */
+    /* 调用者负责在使用完毕后释放 */
+    
     return value;
 }
 

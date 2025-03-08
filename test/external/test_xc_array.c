@@ -78,7 +78,13 @@ void test_array_advanced(void) {
     // Test slice operation
     xc_val start = xc.new(XC_TYPE_NUMBER, 1.0);
     xc_val end = xc.new(XC_TYPE_NUMBER, 4.0);
-    xc_val sliced = xc.call(arr, "slice", start, end);
+    
+    // 创建包含起始和结束索引的数组参数
+    xc_val slice_args = xc.new(XC_TYPE_ARRAY);
+    xc.call(slice_args, "push", start);
+    xc.call(slice_args, "push", end);
+    
+    xc_val sliced = xc.call(arr, "slice", slice_args);
     
     TEST_ASSERT(sliced != NULL, "Slice operation failed");
     TEST_ASSERT(xc.is(sliced, XC_TYPE_ARRAY), "Slice result should be an array");

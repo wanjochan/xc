@@ -71,4 +71,4 @@ ls -la "${BIN_DIR}/test_external.exe"
 echo -e "\nrun_external_tests.sh: 运行外部测试程序: ${BIN_DIR}/test_external.exe\n"
 "${BIN_DIR}/test_external.exe"
 
-echo -e "\nrun_external_tests.sh: 外部测试完成!" 
+echo -e "\nrun_external_tests.sh: 外部测试结束!" 

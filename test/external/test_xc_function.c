@@ -9,8 +9,8 @@
 #include <string.h>
 
 /* 简单的加法函数 */
-static xc_val add_func_handler(xc_val self, int argc, xc_val* argv, void* closure) {
-    printf("DEBUG: add_func_handler 被调用，self=%p, args=0, argc=%d\n", self, argc);
+static xc_val add_func_handler(xc_val rt, xc_val self, int argc, xc_val* argv) {
+    printf("DEBUG: add_func_handler 被调用，rt=%p, self=%p, argc=%d\n", rt, self, argc);
     
     // 安全检查
     if (!argv) {
@@ -40,14 +40,21 @@ static xc_val add_func_handler(xc_val self, int argc, xc_val* argv, void* closur
 }
 
 /* 递增计数器函数 */
-static xc_val increment_func_handler(xc_val self, int argc, xc_val* argv, void* closure) {
-    printf("DEBUG: increment_func_handler 被调用，self=%p, argc=%d\n", self, argc);
+static xc_val increment_func_handler(xc_val rt, xc_val self, int argc, xc_val* argv) {
+    printf("DEBUG: increment_func_handler 被调用，rt=%p, self=%p, argc=%d\n", rt, self, argc);
     
-    // 获取当前计数
-    xc_val current_count = xc.dot(self, "count");
-    if (!current_count || !xc.is(current_count, XC_TYPE_NUMBER)) {
-        printf("ERROR: increment_func_handler 无法获取计数或类型错误\n");
-        return xc.new(XC_TYPE_NUMBER, 0.0);
+    // 确保 self 不为空且是对象类型
+    if (!self || !xc.is(self, XC_TYPE_OBJECT)) {
+        printf("ERROR: increment_func_handler self 为空或不是对象类型\n");
+        return NULL;
+    }
+    
+    // 获取当前计数（暂不处理错误情况，简化测试）
+    xc_val count = xc.dot(self, "count");
+    if (!count) {
+        printf("DEBUG: count 属性不存在，设置为 0\n");
+        count = xc.new(XC_TYPE_NUMBER, 0.0);
+        xc.dot(self, "count", count);
     }
     
     // 创建新的计数值（在实际应用中，我们会读取当前值并加1）
@@ -94,27 +101,36 @@ void test_function_closure(void) {
     
     // Create an object to hold our counter
     xc_val counter_obj = xc.new(XC_TYPE_OBJECT);
+    TEST_ASSERT(counter_obj != NULL, "Counter object creation failed");
+    
+    // 初始化计数值
     xc_val initial_value = xc.new(XC_TYPE_NUMBER, 0.0);
+    TEST_ASSERT(initial_value != NULL, "Initial value creation failed");
+    
+    // 设置初始计数
     xc.dot(counter_obj, "count", initial_value);
     
-    // Create a function that increments the counter and returns the new value
+    // 创建递增函数
     xc_val increment_func = xc.new(XC_TYPE_FUNC, increment_func_handler);
+    TEST_ASSERT(increment_func != NULL, "Increment function creation failed");
     
-    // 直接设置对象的方法属性，而不是使用 bindMethod
+    // 设置对象的方法
     xc.dot(counter_obj, "increment", increment_func);
     
-    // Get the bound method
+    // 检查方法是否绑定成功
     xc_val bound_method = xc.dot(counter_obj, "increment");
     TEST_ASSERT(bound_method != NULL, "Method binding failed");
     
-    // Call the method multiple times
-    xc_val result1 = xc.invoke(bound_method, 0);
+    // 调用方法并检查结果
+    printf("DEBUG: 调用第一次 increment 方法\n");
+    xc_val result1 = xc.call(counter_obj, "increment");
     TEST_ASSERT(result1 != NULL, "First method invocation failed");
     
-    xc_val result2 = xc.invoke(bound_method, 0);
+    printf("DEBUG: 调用第二次 increment 方法\n");
+    xc_val result2 = xc.call(counter_obj, "increment");
     TEST_ASSERT(result2 != NULL, "Second method invocation failed");
     
-    // Verify counter was incremented
+    // 验证计数器被递增
     xc_val count = xc.dot(counter_obj, "count");
     TEST_ASSERT(count != NULL, "Counter retrieval failed");
     TEST_ASSERT(xc.is(count, XC_TYPE_NUMBER), "Counter should be a number");
