@@ -1,6 +1,12 @@
 #include "xc.h"
 #include "xc_internal.h"
-
+/*
+notes
+缺少的机制：
+弱引用：没有发现弱引用相关的实现
+终结器：没有发现对象终结器（finalizer）的实现
+显式解除引用：没有专门的 API 来解除对象引用关系
+*/
 /* Garbage collector color marks for tri-color marking */
 #define XC_GC_WHITE      0   /* Object is not reachable (candidate for collection) */
 #define XC_GC_GRAY       1   /* Object is reachable but its children haven't been scanned */
@@ -292,7 +298,7 @@ xc_object_t *xc_gc_alloc(xc_runtime_t *rt, size_t size, int type_id) {
     // 初始化对象
     memset(obj, 0, size);
     obj->size = size;
-    obj->ref_count = 1;
+    // obj->ref_count = 1;
     obj->gc_color = XC_GC_WHITE;
     
     // 设置类型ID
@@ -311,24 +317,25 @@ xc_object_t *xc_gc_alloc(xc_runtime_t *rt, size_t size, int type_id) {
 
 /* Free an object */
 void xc_gc_free(xc_runtime_t *rt, xc_object_t *obj) {
-    if (!obj) {
-        return;
-    }
+    printf("TODO deprecated xc_gc_free?\n");
+    // if (!obj) {
+    //     return;
+    // }
     
-    // 减少引用计数
-    obj->ref_count--;
+    // // 减少引用计数
+    // obj->ref_count--;
     
-    // 如果引用计数为0，释放对象
-    if (obj->ref_count <= 0) {
-        // 调用类型特定的释放函数
-        xc_type_lifecycle_t *type_handler = get_type_handler(obj->type_id);
-        if (type_handler && type_handler->destroyer) {
-            type_handler->destroyer((xc_val)obj);
-        }
+    // // 如果引用计数为0，释放对象
+    // if (obj->ref_count <= 0) {
+    //     // 调用类型特定的释放函数
+    //     xc_type_lifecycle_t *type_handler = get_type_handler(obj->type_id);
+    //     if (type_handler && type_handler->destroyer) {
+    //         type_handler->destroyer((xc_val)obj);
+    //     }
         
-        // 释放内存
-        free(obj);
-    }
+    //     // 释放内存
+    //     free(obj);
+    // }
 }
 
 /* Mark an object as permanently reachable */
@@ -339,27 +346,30 @@ void xc_gc_mark_permanent(xc_runtime_t *rt, xc_object_t *obj) {
 
 /* Add a reference to an object */
 void xc_gc_add_ref(xc_runtime_t *rt, xc_object_t *obj) {
-    if (!obj) return;
-    obj->ref_count++;
+    printf("TODO deprecated xc_gc_add_ref?\n");
+    // if (!obj) return;
+    // obj->ref_count++;
 }
 
 /* Release a reference to an object */
 void xc_gc_release(xc_runtime_t *rt, xc_object_t *obj) {
-    if (!obj) return;
+    printf("TODO deprecated xc_gc_release?\n");
+    // if (!obj) return;
     
-    obj->ref_count--;
+    // obj->ref_count--;
     
-    /* If reference count reaches zero, free the object */
-    if (obj->ref_count <= 0) {
-        xc_gc_free(rt, obj);
-    }
+    // /* If reference count reaches zero, free the object */
+    // if (obj->ref_count <= 0) {
+    //     xc_gc_free(rt, obj);
+    // }
 }
 
-/* Get the reference count of an object */
-int xc_gc_get_ref_count(xc_runtime_t *rt, xc_object_t *obj) {
-    if (!obj) return 0;
-    return obj->ref_count;
-}
+// /* Get the reference count of an object */
+// int xc_gc_get_ref_count(xc_runtime_t *rt, xc_object_t *obj) {
+//     printf("TODO deprecated xc_gc_get_ref_count?\n");
+//     // if (!obj) return 0;
+//     // return obj->ref_count;
+// }
 
 /* Add a root object to the root set */
 void xc_gc_add_root(xc_runtime_t *rt, xc_object_t **root_ptr) {
@@ -448,17 +458,18 @@ bool xc_gc_is_enabled(xc_runtime_t *rt) {
     return gc->enabled;
 }
 
-/* Global release function for backward compatibility */
-void xc_gc_release_object(xc_val obj) {
-    /* This is a placeholder for backward compatibility */
-    /* In a real implementation, we would need to get the current runtime */
-    /* and call xc_gc_release on it */
-}
+// /* Global release function for backward compatibility */
+// void xc_gc_release_object(xc_val obj) {
+//     /* This is a placeholder for backward compatibility */
+//     /* In a real implementation, we would need to get the current runtime */
+//     /* and call xc_gc_release on it */
+// }
 
-/* Global release function for backward compatibility */
-void xc_release(xc_val obj) {
-    xc_gc_release_object(obj);
-}
+// /* Global release function for backward compatibility */
+// void xc_release(xc_val obj) {
+//     printf("TODO remove deprecated xc_release?\n");
+//     // xc_gc_release_object(obj);
+// }
 
 // /* 分配原始内存并处理GC相关逻辑 */
 // void* xc_gc_allocate_raw_memory(size_t size, int type_id) {

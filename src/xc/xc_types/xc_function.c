@@ -22,15 +22,16 @@ static void function_mark(xc_runtime_t *rt, xc_object_t *obj) {
 }
 
 static void function_free(xc_runtime_t *rt, xc_object_t *obj) {
-    xc_function_t *func = (xc_function_t *)obj;
-    if (func->this_obj) {
-        /* 使用 xc_gc_free 释放对象 */
-        xc_gc_free(rt, func->this_obj);
-    }
-    if (func->closure) {
-        /* 释放闭包环境 */
-        xc_gc_free(rt, func->closure);
-    }
+    //auto gc...
+    // xc_function_t *func = (xc_function_t *)obj;
+    // if (func->this_obj) {
+    //     /* 使用 xc_gc_free 释放对象 */
+    //     xc_gc_free(rt, func->this_obj);
+    // }
+    // if (func->closure) {
+    //     /* 释放闭包环境 */
+    //     xc_gc_free(rt, func->closure);
+    // }
 }
 
 static bool function_equal(xc_runtime_t *rt, xc_object_t *a, xc_object_t *b) {
@@ -120,24 +121,24 @@ xc_object_t *xc_function_create(xc_runtime_t *rt, xc_function_ptr_t fn, xc_objec
     return (xc_object_t *)obj;
 }
 
-/* Function operations */
-xc_object_t *xc_function_bind(xc_runtime_t *rt, xc_object_t *func, xc_object_t *this_obj) {
-    assert(xc_is_function(rt, func));
-    xc_function_t *function = (xc_function_t *)func;
+// /* Function operations */
+// xc_object_t *xc_function_bind(xc_runtime_t *rt, xc_object_t *func, xc_object_t *this_obj) {
+//     assert(xc_is_function(rt, func));
+//     xc_function_t *function = (xc_function_t *)func;
     
-    if (function->this_obj) {
-        /* 使用 xc_gc_free 释放对象 */
-        xc_gc_free(rt, function->this_obj);
-    }
+//     if (function->this_obj) {
+//         /* 使用 xc_gc_free 释放对象 */
+//         xc_gc_free(rt, function->this_obj);
+//     }
     
-    function->this_obj = this_obj;
-    if (this_obj) {
-        /* 使用 xc_gc_add_ref 增加引用计数 */
-        xc_gc_add_ref(rt, this_obj);
-    }
+//     function->this_obj = this_obj;
+//     if (this_obj) {
+//         /* 使用 xc_gc_add_ref 增加引用计数 */
+//         xc_gc_add_ref(rt, this_obj);
+//     }
     
-    return func;
-}
+//     return func;
+// }
 
 xc_object_t *xc_function_call(xc_runtime_t *rt, xc_object_t *func, xc_object_t *this_obj, size_t argc, xc_object_t **argv) {
     assert(xc_is_function(rt, func));

@@ -59,7 +59,8 @@ static int xc_compare_objects(xc_runtime_t *rt, xc_object_t *a, xc_object_t *b) 
 
 /* Helper function for reference counting */
 static xc_object_t *xc_gc_retain(xc_runtime_t *rt, xc_object_t *obj) {
-    xc_gc_add_ref(rt, obj);
+    printf("TODO deprecated xc_gc_retain?\n");
+    // xc_gc_add_ref(rt, obj);
     return obj;
 }
 
@@ -395,17 +396,17 @@ void xc_array_set(xc_runtime_t *rt, xc_object_t *arr, size_t index, xc_object_t 
         return;
     }
 
-    /* 如果当前位置有值，先减少引用计数 */
-    if (array->items[index]) {
-        /* 减少引用计数，但不释放对象本身 */
-        xc_gc_release(rt, array->items[index]);
-    }
+    // /* 如果当前位置有值，先减少引用计数 */
+    // if (array->items[index]) {
+    //     /* 减少引用计数，但不释放对象本身 */
+    //     xc_gc_release(rt, array->items[index]);
+    // }
 
     array->items[index] = value;
-    if (value) {
-        /* 增加引用计数 */
-        xc_gc_add_ref(rt, value);
-    }
+    // if (value) {
+    //     /* 增加引用计数 */
+    //     xc_gc_add_ref(rt, value);
+    // }
 
     if (index >= array->length) {
         array->length = index + 1;
@@ -421,9 +422,9 @@ void xc_array_push(xc_runtime_t *rt, xc_object_t *arr, xc_object_t *value) {
     }
 
     array->items[array->length] = value;
-    if (value) {
-        xc_gc_add_ref(rt, value);
-    }
+    // if (value) {
+    //     xc_gc_add_ref(rt, value);
+    // }
     array->length++;
 }
 
@@ -460,9 +461,9 @@ void xc_array_unshift(xc_runtime_t *rt, xc_object_t *arr, xc_object_t *value) {
     }
     
     array->items[0] = value;
-    if (value) {
-        xc_gc_add_ref(rt, value);
-    }
+    // if (value) {
+    //     xc_gc_add_ref(rt, value);
+    // }
     array->length++;
 }
 
@@ -692,10 +693,10 @@ xc_object_t *xc_array_join_elements(xc_runtime_t *rt, xc_object_t *arr, xc_objec
     // 分配结果字符串的内存
     char *result = (char *)malloc(total_length + 1);
     if (result == NULL) {
-        // 释放临时字符串
-        for (size_t i = 0; i < length; i++) {
-            xc_gc_release(rt, str_items[i]);
-        }
+        // // 释放临时字符串
+        // for (size_t i = 0; i < length; i++) {
+        //     xc_gc_release(rt, str_items[i]);
+        // }
         free(str_items);
         return xc_string_create(rt, "");
     }
@@ -709,8 +710,8 @@ xc_object_t *xc_array_join_elements(xc_runtime_t *rt, xc_object_t *arr, xc_objec
         memcpy(p, str_value, str_len);
         p += str_len;
         
-        // 释放临时字符串
-        xc_gc_release(rt, str_items[i]);
+        // // 释放临时字符串
+        // xc_gc_release(rt, str_items[i]);
         
         if (i < length - 1) {
             memcpy(p, sep_str, sep_len);

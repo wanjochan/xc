@@ -42,7 +42,7 @@
 #define XC_TYPE_EXTENSION_END   255
 
 /* 胖指针 值类型 */
-typedef void* xc_val;
+typedef void* xc_val;//内部可能指向 xc_object_t
 
 typedef struct xc_runtime_t xc_runtime_t;
 
@@ -51,6 +51,18 @@ typedef void (*xc_initializer_func)(void);
 typedef void (*xc_cleaner_func)(void);
 typedef xc_val (*xc_creator_func)(int type, va_list args);
 typedef int (*xc_destroy_func)(xc_val obj);
+/*
+回调机制的工作原理，想象一下这个过程：
+GC 开始标记阶段，从根对象开始
+对于每个对象，GC 调用其类型的 marker 函数
+GC 提供一个回调函数（mark_func），类型实现使用它标记子对象
+类型实现遍历自己的内部结构，对每个子对象调用 mark_func
+这个过程递归进行，直到所有可达对象都被标记
+这种设计的优势：
+解耦合：GC 不需要了解类型内部结构，类型不需要了解 GC 内部实现
+扩展性：添加新类型只需实现正确的 marker 函数，不需要修改 GC
+灵活性：GC 算法可以改变而不影响类型实现
+*/
 typedef void (*xc_marker_func)(xc_val obj, void (*mark_func)(xc_val));
 typedef xc_val (*xc_allocator_func)(size_t size);
 typedef xc_val (*xc_method_func)(xc_val self, xc_val arg);
@@ -72,11 +84,13 @@ typedef struct {
 
 /* 运行时接口结构 */
 typedef struct xc_runtime_t {
-    /* type */
-    // xc_val (*alloc_object)(int type, ...);
-    xc_val (*new)(int type, ...);
-    //TODO delete(xc_val);
-    int (*type_of)(xc_val obj); //"typeof"是关键词不能用
+
+    //xc_val (*alloc)(int type, ...);//TODO link gc_alloc
+
+    xc_val (*new)(int type, ...);//TODO add flags for "const"
+    //TODO delete(xc_val);//TODO alike release 
+
+    int (*type_of)(xc_val obj); //"typeof"是c 语言保留字不能用
     int (*is)(xc_val obj, int type);
 
     int (*register_type)(const char* name, xc_type_lifecycle_t* lifecycle);

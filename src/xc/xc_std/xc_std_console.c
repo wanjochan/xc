@@ -45,7 +45,7 @@ static char* format_message(int argc, xc_val* argv) {
             char* new_buffer = (char*)realloc(buffer, buffer_size);
             if (!new_buffer) {
                 free(buffer);
-                xc_release(item_str);
+                // xc_release(item_str);
                 return NULL;
             }
             buffer = new_buffer;
@@ -61,7 +61,7 @@ static char* format_message(int argc, xc_val* argv) {
         strcat(buffer, str);
         current_len += len;
         
-        xc_release(item_str);
+        // xc_release(item_str);
     }
     
     return buffer;
@@ -112,7 +112,7 @@ static xc_val console_time(xc_val self, int argc, xc_val* argv, xc_val closure) 
     clock_t start_time = clock();
     xc_val time_value = xc_new(XC_TYPE_NUMBER, (double)start_time);
     xc_object_set(&xc, self, label, time_value);
-    xc_release(time_value);
+    // xc_release(time_value);
     
     return NULL;
 }
@@ -152,23 +152,23 @@ static xc_val create_console_object(void) {
     /* 添加方法 */
     xc_val log_func = xc_new(XC_TYPE_FUNC, console_log, -1, NULL);
     xc_object_set(&xc, obj, "log", log_func);
-    xc_release(log_func);
+    // xc_release(log_func);
     
     xc_val error_func = xc_new(XC_TYPE_FUNC, console_error, -1, NULL);
     xc_object_set(&xc, obj, "error", error_func);
-    xc_release(error_func);
+    // xc_release(error_func);
     
     xc_val warn_func = xc_new(XC_TYPE_FUNC, console_warn, -1, NULL);
     xc_object_set(&xc, obj, "warn", warn_func);
-    xc_release(warn_func);
+    // xc_release(warn_func);
     
     xc_val time_func = xc_new(XC_TYPE_FUNC, console_time, 1, NULL);
     xc_object_set(&xc, obj, "time", time_func);
-    xc_release(time_func);
+    // xc_release(time_func);
     
     xc_val timeEnd_func = xc_new(XC_TYPE_FUNC, console_timeEnd, 1, NULL);
     xc_object_set(&xc, obj, "timeEnd", timeEnd_func);
-    xc_release(timeEnd_func);
+    // xc_release(timeEnd_func);
     
     return obj;
 }
@@ -195,7 +195,7 @@ void xc_std_console_initialize(void) {
 /* 清理Console库 */
 void xc_std_console_cleanup(void) {
     if (console_obj != NULL) {
-        xc_release(console_obj);
+        // xc_release(console_obj);
         console_obj = NULL;
     }
 }
