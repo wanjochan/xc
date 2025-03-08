@@ -2,7 +2,7 @@
 #include "../xc_internal.h"
 
 /* Forward declarations */
-static void boolean_mark(xc_runtime_t *rt, xc_object_t *obj);
+// static void boolean_mark(xc_runtime_t *rt, xc_object_t *obj);
 static void boolean_free(xc_runtime_t *rt, xc_object_t *obj);
 static bool boolean_equal(xc_runtime_t *rt, xc_object_t *a, xc_object_t *b);
 static int boolean_compare(xc_runtime_t *rt, xc_object_t *a, xc_object_t *b);
@@ -19,7 +19,7 @@ static xc_object_t *true_singleton = NULL;
 static xc_object_t *false_singleton = NULL;
 
 /* Boolean methods */
-static void boolean_mark(xc_runtime_t *rt, xc_object_t *obj) {
+static void boolean_mark(xc_object_t *obj, mark_func mark) {
     /* Booleans don't have references to other objects */
 }
 
@@ -56,7 +56,7 @@ static xc_type_lifecycle_t boolean_type = {
     .cleaner = NULL,
     .creator = boolean_creator,
     .destroyer = (xc_destroy_func)boolean_free,
-    .marker = (xc_marker_func)boolean_mark,
+    .marker = boolean_mark,
     // .allocator = NULL,
     .name = "boolean",
     .equal = (bool (*)(xc_val, xc_val))boolean_equal,

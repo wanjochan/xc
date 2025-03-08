@@ -59,20 +59,12 @@ void xc_gc_enable(xc_runtime_t *rt);
 void xc_gc_disable(xc_runtime_t *rt);
 bool xc_gc_is_enabled(xc_runtime_t *rt);
 xc_object_t *xc_gc_alloc(xc_runtime_t *rt, size_t size, int type_id);
-void xc_gc_free(xc_runtime_t *rt, xc_object_t *obj);
-void xc_gc_mark_permanent(xc_runtime_t *rt, xc_object_t *obj);
+// void xc_gc_free(xc_runtime_t *rt, xc_object_t *obj);
+//TODO 不对，应该 root.dot(name, XC_FLAG_CONST, val)?
+// void xc_gc_mark_permanent(xc_runtime_t *rt, xc_object_t *obj);
 void xc_gc_mark(xc_runtime_t *rt, xc_object_t *obj);
-void xc_gc_mark_val(xc_val obj);
-//old gc(refCount)
-// void xc_gc_add_ref(xc_runtime_t *rt, xc_object_t *obj);
-// void xc_gc_release(xc_runtime_t *rt, xc_object_t *obj);
-// int xc_gc_get_ref_count(xc_runtime_t *rt, xc_object_t *obj);
-// void xc_gc_add_root(xc_runtime_t *rt, xc_object_t **root_ptr);
-// void xc_gc_remove_root(xc_runtime_t *rt, xc_object_t **root_ptr);
-// xc_gc_stats_t xc_gc_get_stats(xc_runtime_t *rt);
-// void xc_gc_print_stats(xc_runtime_t *rt);
-// // void xc_gc_release_object(xc_val obj);
-// void xc_release(xc_val obj);
+// void xc_gc_mark_val(xc_val obj);//innerl
+
 
 // /* 分配原始内存并处理GC相关逻辑 */
 // void* xc_gc_allocate_raw_memory(size_t size, int type_id);
@@ -461,27 +453,6 @@ typedef struct xc_gc_context {
     xc_object_t *black_list;         /* Black objects (reachable and scanned) */
 } xc_gc_context_t;
 
-// /* Function declarations for GC */
-// void xc_gc_init(xc_runtime_t *rt, const xc_gc_config_t *config);
-// void xc_gc_shutdown(xc_runtime_t *rt);
-// void xc_gc_run(xc_runtime_t *rt);
-// void xc_gc_enable(xc_runtime_t *rt);
-// void xc_gc_disable(xc_runtime_t *rt);
-// bool xc_gc_is_enabled(xc_runtime_t *rt);
-// xc_object_t *xc_gc_alloc(xc_runtime_t *rt, size_t size, int type_id);
-// void xc_gc_free(xc_runtime_t *rt, xc_object_t *obj);
-// void xc_gc_mark_permanent(xc_runtime_t *rt, xc_object_t *obj);
-// void xc_gc_mark(xc_runtime_t *rt, xc_object_t *obj);
-// void xc_gc_mark_val(xc_val obj);
-// void xc_gc_add_ref(xc_runtime_t *rt, xc_object_t *obj);
-// void xc_gc_release(xc_runtime_t *rt, xc_object_t *obj);
-// int xc_gc_get_ref_count(xc_runtime_t *rt, xc_object_t *obj);
-// void xc_gc_add_root(xc_runtime_t *rt, xc_object_t **root_ptr);
-// void xc_gc_remove_root(xc_runtime_t *rt, xc_object_t **root_ptr);
-// xc_gc_stats_t xc_gc_get_stats(xc_runtime_t *rt);
-// void xc_gc_print_stats(xc_runtime_t *rt);
-// // void xc_gc_release_object(xc_val obj);
-// void xc_release(xc_val obj);
 
 /* 错误代码 */
 #define XC_ERR_NONE 0

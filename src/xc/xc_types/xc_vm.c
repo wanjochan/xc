@@ -249,7 +249,7 @@ typedef struct {
 } xc_vm_t;
 
 /* Forward declarations */
-static void vm_marker(xc_val self, void (*mark_func)(xc_val));
+static void vm_marker(xc_object_t *obj, mark_func mark);
 static int vm_destroy(xc_val self);
 static void vm_initialize(void);
 static xc_val vm_creator(int type, va_list args);

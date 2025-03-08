@@ -2,22 +2,20 @@
 #include "../xc_internal.h"
 
 /* Forward declarations */
-static void function_mark(xc_runtime_t *rt, xc_object_t *obj);
+// static void function_mark(xc_runtime_t *rt, xc_object_t *obj);
 static void function_free(xc_runtime_t *rt, xc_object_t *obj);
 static bool function_equal(xc_runtime_t *rt, xc_object_t *a, xc_object_t *b);
 static int function_compare(xc_runtime_t *rt, xc_object_t *a, xc_object_t *b);
 static xc_val function_creator(int type, va_list args);
 
 /* Function methods */
-static void function_mark(xc_runtime_t *rt, xc_object_t *obj) {
+static void function_mark(xc_object_t *obj, mark_func mark) {
     xc_function_t *func = (xc_function_t *)obj;
     if (func->this_obj) {
-        /* 使用 xc_gc_mark 标记对象 */
-        xc_gc_mark(rt, func->this_obj);
+        mark(func->this_obj);
     }
     if (func->closure) {
-        /* 标记闭包环境 */
-        xc_gc_mark(rt, func->closure);
+        mark(func->closure);
     }
 }
 
@@ -83,7 +81,7 @@ static xc_type_lifecycle_t function_type = {
     .cleaner = NULL,
     .creator = function_creator,
     .destroyer = (xc_destroy_func)function_free,
-    .marker = (xc_marker_func)function_mark,
+    .marker = function_mark,
     // .allocator = NULL,
     .name = "function",
     .equal = (bool (*)(xc_val, xc_val))function_equal,

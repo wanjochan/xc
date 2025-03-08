@@ -6,7 +6,7 @@ static bool array_ensure_capacity(xc_array_t *arr, size_t needed);
 static xc_object_t *xc_to_string_internal(xc_runtime_t *rt, xc_object_t *obj);
 static xc_object_t *xc_array_join_elements(xc_runtime_t *rt, xc_object_t *arr, xc_object_t *separator);
 int xc_array_find_index_from(xc_runtime_t *rt, xc_object_t *arr, xc_object_t *value, int from_index);
-static void array_mark(xc_runtime_t *rt, xc_object_t *obj);
+static void array_mark(xc_object_t *obj, mark_func mark);
 static void array_free(xc_runtime_t *rt, xc_object_t *obj);
 static bool array_equal(xc_runtime_t *rt, xc_object_t *a, xc_object_t *b);
 static int array_compare(xc_runtime_t *rt, xc_object_t *a, xc_object_t *b);
@@ -58,12 +58,12 @@ static int xc_compare_objects(xc_runtime_t *rt, xc_object_t *a, xc_object_t *b) 
 }
 
 /* Array methods */
-static void array_mark(xc_runtime_t *rt, xc_object_t *obj) {
+static void array_mark(xc_object_t *obj, mark_func mark) {
     xc_array_t *arr = (xc_array_t *)obj;
     for (size_t i = 0; i < arr->length; i++) {
         if (arr->items[i]) {
             /* Mark each item in the array */
-            xc_gc_mark(rt, arr->items[i]);
+            mark(arr->items[i]);
         }
     }
 }
@@ -73,11 +73,12 @@ static void array_free(xc_runtime_t *rt, xc_object_t *obj) {
     /* Release all items */
     for (size_t i = 0; i < arr->length; i++) {
         if (arr->items[i]) {
-            xc_gc_free(rt, arr->items[i]);
+            //xc_gc_free(rt, arr->items[i]);
+printf("TODO xc_gc_free or memmove??");
         }
     }
     /* Free the items array */
-    free(arr->items);
+    free(arr->items);//??? not using gc??
     arr->items = NULL;
     arr->length = 0;
     arr->capacity = 0;
@@ -132,7 +133,7 @@ static xc_type_lifecycle_t array_type = {
     .cleaner = NULL,
     .creator = array_creator,
     .destroyer = (xc_destroy_func)array_free,
-    .marker = (xc_marker_func)array_mark,
+    .marker = array_mark,
     // .allocator = NULL,
     .name = "array",
     .equal = (bool (*)(xc_val, xc_val))array_equal,
@@ -351,7 +352,8 @@ xc_object_t *xc_array_create_with_capacity(xc_runtime_t *rt, size_t capacity) {
     if (capacity > 0) {
         arr->items = (xc_object_t **)malloc(sizeof(xc_object_t *) * capacity);
         if (!arr->items) {
-            xc_gc_free(rt, (xc_object_t *)arr);
+            //xc_gc_free(rt, (xc_object_t *)arr);
+//TODO xc.delete(arr);
             return NULL;
         }
         memset(arr->items, 0, sizeof(xc_object_t *) * capacity);

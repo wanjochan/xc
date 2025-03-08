@@ -2,7 +2,6 @@
 #include "../xc_internal.h"
 
 /* Forward declarations */
-static void number_mark(xc_runtime_t *rt, xc_object_t *obj);
 static void number_free(xc_runtime_t *rt, xc_object_t *obj);
 static bool number_equal(xc_runtime_t *rt, xc_object_t *a, xc_object_t *b);
 static int number_compare(xc_runtime_t *rt, xc_object_t *a, xc_object_t *b);
@@ -15,7 +14,7 @@ typedef struct {
 } xc_number_t;
 
 /* Number methods */
-static void number_mark(xc_runtime_t *rt, xc_object_t *obj) {
+static void number_mark(xc_object_t *obj, mark_func mark) {
     /* Numbers don't have references to other objects */
 }
 
@@ -49,7 +48,7 @@ static xc_type_lifecycle_t number_type = {
     .cleaner = NULL,
     .creator = number_creator,
     .destroyer = (xc_destroy_func)number_free,
-    .marker = (xc_marker_func)number_mark,
+    .marker = number_mark,
     // .allocator = NULL,
     .name = "number",
     .equal = (bool (*)(xc_val, xc_val))number_equal,

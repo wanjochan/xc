@@ -5,7 +5,7 @@ xc_exception_frame_t *xc_exception_frame = NULL;
 
 /* Forward declarations */
 static void xc_error_free(xc_runtime_t *rt, xc_object_t *obj);
-static void xc_error_mark(xc_runtime_t *rt, xc_object_t *obj);
+static void xc_error_mark(xc_object_t *obj, mark_func mark);
 static bool error_equal(xc_val a, xc_val b);
 static int error_compare(xc_val a, xc_val b);
 static xc_val error_creator(int type, va_list args);
@@ -16,7 +16,7 @@ static xc_type_lifecycle_t error_type = {
     .cleaner = NULL,
     .creator = error_creator,
     .destroyer = (xc_destroy_func)xc_error_free,
-    .marker = (xc_marker_func)xc_error_mark,
+    .marker = xc_error_mark,
     //.allocator = NULL,
     .name = "error",
     .equal = (bool (*)(xc_val, xc_val))error_equal,
@@ -482,14 +482,15 @@ static void xc_error_free(xc_runtime_t *rt, xc_object_t *obj) {
 }
 
 /* Mark an error object for GC */
-static void xc_error_mark(xc_runtime_t *rt, xc_object_t *obj) {
+static void xc_error_mark(xc_object_t *obj, mark_func mark) {
     if (!obj || ((xc_object_t *)obj)->type_id != XC_TYPE_EXCEPTION) return;
     
     xc_exception_t *exception = (xc_exception_t *)obj;
     
     /* Mark the cause if any */
     if (exception->cause) {
-        xc_gc_mark(rt, (xc_object_t *)exception->cause);
+        //xc_gc_mark(rt, (xc_object_t *)exception->cause);
+        mark((xc_object_t *)exception->cause);
     }
 }
 

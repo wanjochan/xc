@@ -117,7 +117,7 @@ void xc_gc_mark(xc_runtime_t *rt, xc_object_t *obj) {
 }
 
 /* 标记值为可达（用于 marker 函数） */
-void xc_gc_mark_val(xc_val val) {
+void _xc_gc_mark_val(xc_val val) {
     // 获取当前运行时
     xc_runtime_t *rt = &xc;
     
@@ -146,7 +146,7 @@ static void xc_gc_process_gray_list(xc_runtime_t *rt) {
         // 标记对象引用的其他对象
         xc_type_lifecycle_t *type_handler = get_type_handler(obj->type_id);
         if (type_handler && type_handler->marker) {
-            type_handler->marker((xc_val)obj, xc_gc_mark_val);
+            type_handler->marker((xc_val)obj, _xc_gc_mark_val);
         }
         
         obj = next;
@@ -315,41 +315,42 @@ xc_object_t *xc_gc_alloc(xc_runtime_t *rt, size_t size, int type_id) {
     return obj;
 }
 
-/* Free an object */
-void xc_gc_free(xc_runtime_t *rt, xc_object_t *obj) {
-    printf("TODO deprecated xc_gc_free?\n");
-    // if (!obj) {
-    //     return;
-    // }
+// /* Free an object */
+// void xc_gc_free(xc_runtime_t *rt, xc_object_t *obj) {
+//     printf("TODO deprecated xc_gc_free?\n");
+//     // if (!obj) {
+//     //     return;
+//     // }
     
-    // // 减少引用计数
-    // obj->ref_count--;
+//     // // 减少引用计数
+//     // obj->ref_count--;
     
-    // // 如果引用计数为0，释放对象
-    // if (obj->ref_count <= 0) {
-    //     // 调用类型特定的释放函数
-    //     xc_type_lifecycle_t *type_handler = get_type_handler(obj->type_id);
-    //     if (type_handler && type_handler->destroyer) {
-    //         type_handler->destroyer((xc_val)obj);
-    //     }
+//     // // 如果引用计数为0，释放对象
+//     // if (obj->ref_count <= 0) {
+//     //     // 调用类型特定的释放函数
+//     //     xc_type_lifecycle_t *type_handler = get_type_handler(obj->type_id);
+//     //     if (type_handler && type_handler->destroyer) {
+//     //         type_handler->destroyer((xc_val)obj);
+//     //     }
         
-    //     // 释放内存
-    //     free(obj);
-    // }
-}
+//     //     // 释放内存
+//     //     free(obj);
+//     // }
+// }
 
 /* Mark an object as permanently reachable */
+//TODO 不对，应该 root.dot(name, XC_FLAG_CONST, val)?
 void xc_gc_mark_permanent(xc_runtime_t *rt, xc_object_t *obj) {
     if (!obj) return;
     obj->gc_color = XC_GC_BLACK;
 }
 
-/* Add a reference to an object */
-void xc_gc_add_ref(xc_runtime_t *rt, xc_object_t *obj) {
-    printf("TODO deprecated xc_gc_add_ref?\n");
-    // if (!obj) return;
-    // obj->ref_count++;
-}
+// /* Add a reference to an object */
+// void xc_gc_add_ref(xc_runtime_t *rt, xc_object_t *obj) {
+//     printf("TODO deprecated xc_gc_add_ref?\n");
+//     // if (!obj) return;
+//     // obj->ref_count++;
+// }
 
 // /* Get the reference count of an object */
 // int xc_gc_get_ref_count(xc_runtime_t *rt, xc_object_t *obj) {

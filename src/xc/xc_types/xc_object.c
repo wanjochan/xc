@@ -69,10 +69,12 @@ static void object_free(xc_runtime_t *rt, xc_object_t *obj) {
     /* Free all properties */
     for (size_t i = 0; i < object->count; i++) {
         if (object->properties[i].key) {
-            xc_gc_free(rt, object->properties[i].key);
+            //xc_gc_free(rt, object->properties[i].key);
+//TODO xc.delete(object->properties[i].key) ?
         }
         if (object->properties[i].value) {
-            xc_gc_free(rt, object->properties[i].value);
+            //xc_gc_free(rt, object->properties[i].value);
+//TODO xc.delete(object->properties[i].value) ?
         }
     }
     
@@ -81,7 +83,8 @@ static void object_free(xc_runtime_t *rt, xc_object_t *obj) {
     
     /* Free prototype reference */
     if (object->prototype) {
-        xc_gc_free(rt, object->prototype);
+        //xc_gc_free(rt, object->prototype);
+//TODO xc.delete(object->prototype);
     }
 }
 
@@ -210,7 +213,8 @@ void xc_object_set(xc_runtime_t *rt, xc_object_t *obj, const char *key, xc_objec
     if (prop) {
         /* Update existing property */
         if (prop->value) {
-            xc_gc_free(rt, prop->value);
+            //xc_gc_free(rt, prop->value);
+//TODO xc.delete
         }
         prop->value = value;
         // if (value) {
@@ -295,7 +299,8 @@ void xc_object_set_prototype(xc_runtime_t *rt, xc_object_t *obj, xc_object_t *pr
     xc_object_data_t *object = (xc_object_data_t *)obj;
     
     if (object->prototype) {
-        xc_gc_free(rt, object->prototype);
+        //xc_gc_free(rt, object->prototype);
+//TODO xc.delete()
     }
     
     object->prototype = proto;

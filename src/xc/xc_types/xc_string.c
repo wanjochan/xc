@@ -2,7 +2,6 @@
 #include "../xc_internal.h"
 
 /* Forward declarations */
-static void string_mark(xc_runtime_t *rt, xc_object_t *obj);
 static void string_free(xc_runtime_t *rt, xc_object_t *obj);
 static bool string_equal(xc_runtime_t *rt, xc_object_t *a, xc_object_t *b);
 static int string_compare(xc_runtime_t *rt, xc_object_t *a, xc_object_t *b);
@@ -20,7 +19,7 @@ typedef struct {
 } xc_string_t;
 
 /* String methods */
-static void string_mark(xc_runtime_t *rt, xc_object_t *obj) {
+static void string_mark(xc_object_t *obj, mark_func mark) {
     /* Strings don't have references to other objects */
 }
 
@@ -61,7 +60,7 @@ static xc_type_lifecycle_t string_type = {
     .cleaner = NULL,
     .creator = string_creator,
     .destroyer = (xc_destroy_func)string_free,
-    .marker = (xc_marker_func)string_mark,
+    .marker = string_mark,
     // .allocator = NULL,
     .name = "string",
     .equal = (bool (*)(xc_val, xc_val))string_equal,

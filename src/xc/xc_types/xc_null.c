@@ -72,7 +72,8 @@ void xc_register_null_type(xc_runtime_t *rt) {
             /* 设置正确的类型ID */
             ((xc_object_t *)obj)->type_id = XC_TYPE_NULL;
             /* 使用 xc_gc_mark_permanent 标记为永久对象 */
-            xc_gc_mark_permanent(rt, (xc_object_t *)obj);
+            //xc_gc_mark_permanent(rt, (xc_object_t *)obj);
+            //TODO 不对，应该 root.dot(name, XC_FLAG_CONST, val)?
             null_singleton = (xc_object_t *)obj;
         }
     }
