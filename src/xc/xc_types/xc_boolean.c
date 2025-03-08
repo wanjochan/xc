@@ -7,6 +7,8 @@
 // static int boolean_compare(xc_runtime_t *rt, xc_object_t *a, xc_object_t *b);
 // static xc_val boolean_creator(int type, va_list args);
 
+static xc_runtime_t* rt = NULL;
+
 /* 声明需要使用的外部函数 */
 extern double xc_to_number(xc_runtime_t *rt, xc_object_t *obj);
 
@@ -58,7 +60,7 @@ static xc_val boolean_creator(int type, va_list args) {
     bool value = va_arg(args, int); /* bool在可变参数中被提升为int */
     
     /* 调用实际的创建函数 */
-    return (xc_val)xc.new(XC_TYPE_BOOL, value);
+    return rt->new(XC_TYPE_BOOL, value);
 }
 
 /* 获取布尔值 */
@@ -80,10 +82,10 @@ static xc_val boolean_convert_to(xc_val obj, int target_type) {
             return obj; // 已经是布尔类型
             
         case XC_TYPE_NUMBER:
-            return xc.new(XC_TYPE_NUMBER, value ? 1.0 : 0.0);
+            return rt->new(XC_TYPE_NUMBER, value ? 1.0 : 0.0);
             
         case XC_TYPE_STRING:
-            return xc.new(XC_TYPE_STRING, value ? "true" : "false");
+            return rt->new(XC_TYPE_STRING, value ? "true" : "false");
             
         default:
             return NULL; // 不支持的转换
@@ -101,7 +103,7 @@ xc_object_t *xc_boolean_create(xc_runtime_t *rt, bool value) {
     }
     
     /* 分配内存 */
-    xc_boolean_t *obj = (xc_boolean_t *)xc.alloc(XC_TYPE_BOOL, sizeof(xc_boolean_t));
+    xc_boolean_t *obj = (xc_boolean_t *)rt->alloc(XC_TYPE_BOOL, sizeof(xc_boolean_t));
     if (!obj) {
         return NULL;
     }
@@ -127,7 +129,7 @@ bool xc_is_boolean(xc_runtime_t *rt, xc_object_t *obj) {
 
 /* Value access */
 bool xc_boolean_value(xc_runtime_t *rt, xc_object_t *obj) {
-    assert(xc.is(obj, XC_TYPE_BOOL));
+    assert(rt->is(obj, XC_TYPE_BOOL));
     xc_boolean_t *boolean = (xc_boolean_t *)obj;
     return boolean->value;
 }
@@ -177,7 +179,8 @@ static xc_type_lifecycle_t boolean_type = {
 
 
 /* Register boolean type */
-void xc_register_boolean_type(xc_runtime_t *rt) {
+void xc_register_boolean_type(xc_runtime_t *caller_rt) {
+    rt = caller_rt;
     /* 定义类型生命周期管理接口 */
     boolean_type.initializer = NULL;
     boolean_type.cleaner = NULL;
@@ -193,6 +196,6 @@ void xc_register_boolean_type(xc_runtime_t *rt) {
     boolean_type.convert_to = boolean_convert_to;
     
     /* 注册类型 */
-    int type_id = xc.register_type("boolean", &boolean_type);
+    int type_id = rt->register_type("boolean", &boolean_type);
     // xc_boolean_type = &boolean_type;
 }

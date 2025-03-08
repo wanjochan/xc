@@ -6,6 +6,7 @@
  */
 #include "test_utils.h"
 
+static xc_runtime_t* rt = NULL;
 // 将TEST_ARRAY_STANDALONE定义注释掉，这样main函数就不会被编译
 // #define TEST_ARRAY_STANDALONE 1
 
@@ -23,11 +24,9 @@ static void test_array_simple() {
 }
 
 void run_array_tests() {
+    rt = xc_singleton();
     printf("Running XC Array Tests\n");
     printf("======================\n");
-    
-    // 设置rt指向全局xc实例
-    rt = &xc;
     
     // 调用简化的数组测试函数
     test_array_simple();

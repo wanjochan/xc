@@ -1,6 +1,7 @@
 #include "../xc.h"
 #include "../xc_internal.h"
 
+static xc_runtime_t* rt = NULL;
 /* Forward declarations */
 static bool array_ensure_capacity(xc_array_t *arr, size_t needed);
 static xc_object_t *xc_to_string_internal(xc_runtime_t *rt, xc_object_t *obj);
@@ -147,22 +148,22 @@ static xc_type_lifecycle_t array_type = {
 
 /* Array creator function for type system */
 static xc_val array_creator(int type, va_list args) {
-    // 使用全局运行时实例
-    xc_runtime_t *rt = &xc;
-    //printf("DEBUG array_creator called, type=%d\n", type);
-    // 创建一个空数组
+    // // 使用全局运行时实例
+    // xc_runtime_t *rt = &xc;
+    // //printf("DEBUG array_creator called, type=%d\n", type);
+    // // 创建一个空数组
     return xc_array_create(rt);
 }
 
 /* 方法包装函数 */
 static xc_val array_length_method(xc_val self, xc_val arg) {
-    xc_runtime_t *rt = &xc;
+    // xc_runtime_t *rt = &xc;
     //printf("DEBUG array_length_method called, self=%p\n", self);
     return (xc_val)xc_array_length(rt, (xc_object_t *)self);
 }
 
 static xc_val array_get_method(xc_val self, xc_val arg) {
-    xc_runtime_t *rt = &xc;
+    // xc_runtime_t *rt = &xc;
     //printf("DEBUG array_get_method called, self=%p, arg=%p\n", self, arg);
     // 参数应该是一个数字，表示索引
     if (!arg || !rt->is(arg, XC_TYPE_NUMBER)) {
@@ -176,20 +177,20 @@ static xc_val array_get_method(xc_val self, xc_val arg) {
 }
 
 static xc_val array_push_method(xc_val self, xc_val arg) {
-    xc_runtime_t *rt = &xc;
+    // xc_runtime_t *rt = &xc;
     //printf("DEBUG array_push_method called, self=%p, arg=%p\n", self, arg);
     xc_array_push(rt, (xc_object_t *)self, (xc_object_t *)arg);
     return self; // 返回数组自身
 }
 
 static xc_val array_pop_method(xc_val self, xc_val arg) {
-    xc_runtime_t *rt = &xc;
+    // xc_runtime_t *rt = &xc;
     //printf("DEBUG array_pop_method called, self=%p\n", self);
     return xc_array_pop(rt, (xc_object_t *)self);
 }
 
 static xc_val array_slice_method(xc_val self, xc_val arg) {
-    xc_runtime_t *rt = &xc;
+    // xc_runtime_t *rt = &xc;
     //printf("DEBUG array_slice_method called, self=%p, arg=%p\n", self, arg);
     
     // 参数应该是一个数组，包含起始和结束索引
@@ -221,7 +222,7 @@ static xc_val array_slice_method(xc_val self, xc_val arg) {
 }
 
 static xc_val array_concat_method(xc_val self, xc_val arg) {
-    xc_runtime_t *rt = &xc;
+    // xc_runtime_t *rt = &xc;
     //printf("DEBUG array_concat_method called, self=%p, arg=%p\n", self, arg);
     
     // 参数应该是一个数组
@@ -234,7 +235,7 @@ static xc_val array_concat_method(xc_val self, xc_val arg) {
 }
 
 static xc_val array_join_method(xc_val self, xc_val arg) {
-    xc_runtime_t *rt = &xc;
+    // xc_runtime_t *rt = &xc;
     //printf("DEBUG array_join_method called, self=%p, arg=%p\n", self, arg);
     
     // 参数应该是一个字符串，表示分隔符
@@ -248,7 +249,7 @@ static xc_val array_join_method(xc_val self, xc_val arg) {
 
 /* Array initializer function for type system */
 static void array_initializer() {
-    xc_runtime_t *rt = &xc;
+    // xc_runtime_t *rt = &xc;
     // 数组类型的初始化逻辑
     //printf("DEBUG array_initializer called\n");
     //printf("DEBUG array_initializer: registering methods for type %d\n", XC_TYPE_ARRAY);
@@ -273,11 +274,12 @@ static void array_initializer() {
 }
 
 /* Register array type */
-void xc_register_array_type(xc_runtime_t *rt) {
+void xc_register_array_type(xc_runtime_t *caller_rt) {
+    rt = caller_rt;
     //printf("DEBUG xc_register_array_type: registering array type\n");
     
     /* 注册类型 */
-    int type_id = xc_register_type("array", &array_type);
+    int type_id = rt->register_type("array", &array_type);
     
     /* 使用 XC_RUNTIME_EXT 宏访问扩展运行时结构体 */
     xc_array_type = &array_type;
@@ -371,7 +373,7 @@ xc_object_t *xc_array_create_with_capacity(xc_runtime_t *rt, size_t capacity) {
         arr->items = (xc_object_t **)malloc(sizeof(xc_object_t *) * capacity);
         if (!arr->items) {
             //xc_gc_free(rt, (xc_object_t *)arr);
-//TODO xc.delete(arr);
+//TODO rt->delete(arr);
             return NULL;
         }
         memset(arr->items, 0, sizeof(xc_object_t *) * capacity);
@@ -770,16 +772,16 @@ static xc_val array_convert_to(xc_val obj, int target_type) {
     switch (target_type) {
         case XC_TYPE_BOOL:
             // 非空数组为true
-            return xc.new(XC_TYPE_BOOL, array->length > 0);
+            return rt->new(XC_TYPE_BOOL, array->length > 0);
             
         case XC_TYPE_NUMBER:
             // 返回数组长度
-            return xc.new(XC_TYPE_NUMBER, (double)array->length);
+            return rt->new(XC_TYPE_NUMBER, (double)array->length);
             
         case XC_TYPE_STRING: {
             // 将数组转换为字符串表示
             // 这里简化处理，返回类似 "[object Array]" 的字符串
-            return xc.new(XC_TYPE_STRING, "[object Array]");
+            return rt->new(XC_TYPE_STRING, "[object Array]");
         }
             
         case XC_TYPE_ARRAY:

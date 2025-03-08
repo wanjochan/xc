@@ -1,8 +1,12 @@
 /*
- * test_xc.c - XC Runtime Tests Main Entry
+ * test_rt->c - XC Runtime Tests Main Entry
  */
 
+ DELETE OLD FILE?
+
 #include "test_utils.h"
+
+static xc_runtime_t* rt = NULL;
 
 /* External test suite declarations */
 void test_xc_types(void);
@@ -19,7 +23,7 @@ static void print_val(xc_val val) {
         printf("null");
         return;
     }
-    int type = xc.type_of(val);
+    int type = rt->type_of(val);
     printf("Object(type=%d)", type);
 }
 
@@ -27,13 +31,13 @@ static void print_val(xc_val val) {
 static void test_runtime_interface(void) {
     test_start("Runtime Interface");
     
-    TEST_ASSERT_NOT_NULL(xc.alloc_object, "alloc_object interface available");
-    TEST_ASSERT_NOT_NULL(xc.type_of, "type_of interface available");
-    TEST_ASSERT_NOT_NULL(xc.create, "create interface available");
-    TEST_ASSERT_NOT_NULL(xc.is, "is interface available");
-    TEST_ASSERT_NOT_NULL(xc.call, "call interface available");
-    //TEST_ASSERT_NOT_NULL(xc.gc, "gc interface available");
-    TEST_ASSERT_NOT_NULL(xc.try_catch_finally, "exception handling available");
+    TEST_ASSERT_NOT_NULL(rt->alloc_object, "alloc_object interface available");
+    TEST_ASSERT_NOT_NULL(rt->type_of, "type_of interface available");
+    TEST_ASSERT_NOT_NULL(rt->create, "create interface available");
+    TEST_ASSERT_NOT_NULL(rt->is, "is interface available");
+    TEST_ASSERT_NOT_NULL(rt->call, "call interface available");
+    //TEST_ASSERT_NOT_NULL(rt->gc, "gc interface available");
+    TEST_ASSERT_NOT_NULL(rt->try_catch_finally, "exception handling available");
     
     test_end("Runtime Interface");
 }
@@ -45,6 +49,7 @@ static void register_test_suites(void) {
 }
 
 int main(int argc, char* argv[]) {
+    rt = xc_singleton();
     /* Initialize test framework */
     test_init("XC Runtime Test Suite");
     

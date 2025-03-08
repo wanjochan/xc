@@ -1132,7 +1132,7 @@ xc_type_registry_t type_registry = {0};
 
 /* 内置类型处理器 */
 xc_type_lifecycle_t *xc_null_type = NULL;
-xc_type_lifecycle_t *xc_boolean_type = NULL;
+// xc_type_lifecycle_t *xc_boolean_type = NULL;
 xc_type_lifecycle_t *xc_number_type = NULL;
 xc_type_lifecycle_t *xc_string_type = NULL;
 xc_type_lifecycle_t *xc_array_type = NULL;

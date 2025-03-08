@@ -1,6 +1,8 @@
 #include "../xc.h"
 #include "../xc_internal.h"
 
+static xc_runtime_t* rt = NULL;
+
 /* Forward declarations */
 static void string_free(xc_runtime_t *rt, xc_object_t *obj);
 static bool string_equal(xc_runtime_t *rt, xc_object_t *a, xc_object_t *b);
@@ -73,10 +75,11 @@ static xc_type_lifecycle_t string_type = {
 };
 
 /* Register string type */
-void xc_register_string_type(xc_runtime_t *rt) {
+void xc_register_string_type(xc_runtime_t *caller_rt) {
+    rt = caller_rt;
     /* 定义类型生命周期管理接口 */
     /* 注册类型 */
-    int type_id = xc_register_type("string", &string_type);
+    int type_id = rt->register_type("string", &string_type);
     xc_string_type = &string_type;
     
     /* 注册字符串方法 */
@@ -254,7 +257,7 @@ static xc_val string_convert_to(xc_val obj, int target_type) {
     switch (target_type) {
         case XC_TYPE_BOOL:
             // 非空字符串为true
-            return xc.new(XC_TYPE_BOOL, str && str[0] != '\0');
+            return rt->new(XC_TYPE_BOOL, str && str[0] != '\0');
             
         case XC_TYPE_NUMBER: {
             // 尝试将字符串转换为数字
@@ -262,10 +265,10 @@ static xc_val string_convert_to(xc_val obj, int target_type) {
             double value = strtod(str, &end);
             // 如果转换成功（end不等于str且end指向字符串结束符或空白字符）
             if (end != str && (*end == '\0' || isspace(*end))) {
-                return xc.new(XC_TYPE_NUMBER, value);
+                return rt->new(XC_TYPE_NUMBER, value);
             }
             // 转换失败，返回0
-            return xc.new(XC_TYPE_NUMBER, 0.0);
+            return rt->new(XC_TYPE_NUMBER, 0.0);
         }
             
         case XC_TYPE_STRING:

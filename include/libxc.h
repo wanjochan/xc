@@ -158,7 +158,7 @@ typedef struct xc_runtime_t {
 } xc_runtime_t;
 
 /* xc global instance */
-extern xc_runtime_t xc;//TODO remove for nameing conflicts
+// extern xc_runtime_t xc;//TODO remove for nameing conflicts
 
 //TODO 解决命名冲突
 xc_runtime_t* xc_singleton(void);

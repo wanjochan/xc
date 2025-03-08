@@ -1,6 +1,8 @@
 #include "../xc.h"
 #include "../xc_internal.h"
 
+static xc_runtime_t* rt = NULL;
+
 /* Forward declarations */
 static void number_free(xc_runtime_t *rt, xc_object_t *obj);
 static bool number_equal(xc_runtime_t *rt, xc_object_t *a, xc_object_t *b);
@@ -58,7 +60,7 @@ static xc_val number_convert_to(xc_val obj, int target_type) {
     
     switch (target_type) {
         case XC_TYPE_BOOL:
-            return xc.new(XC_TYPE_BOOL, value != 0.0);
+            return rt->new(XC_TYPE_BOOL, value != 0.0);
             
         case XC_TYPE_NUMBER:
             return obj; // 已经是数字类型
@@ -66,7 +68,7 @@ static xc_val number_convert_to(xc_val obj, int target_type) {
         case XC_TYPE_STRING: {
             char buffer[32];
             snprintf(buffer, sizeof(buffer), "%g", value);
-            return xc.new(XC_TYPE_STRING, buffer);
+            return rt->new(XC_TYPE_STRING, buffer);
         }
             
         default:
@@ -100,7 +102,8 @@ static xc_val number_creator(int type, va_list args) {
 }
 
 /* Register number type */
-void xc_register_number_type(xc_runtime_t *rt) {
+void xc_register_number_type(xc_runtime_t *caller_rt) {
+    rt = caller_rt;
     /* 定义类型生命周期管理接口 */
     /* 注册类型 */
     int type_id = rt->register_type("number", &number_type);

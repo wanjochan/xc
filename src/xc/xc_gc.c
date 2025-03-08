@@ -1,5 +1,7 @@
 #include "xc.h"
 #include "xc_internal.h"
+
+static xc_runtime_t* rt = NULL;//TODO xc_init();
 /*
 notes
 缺少的机制：
@@ -13,9 +15,15 @@ notes
 #define XC_GC_BLACK      2   /* Object is reachable and its children have been scanned */
 #define XC_GC_PERMANENT  3   /* Object is permanently reachable (never collected) */
 
+void ensure_rt(void) {
+    if (!rt) {
+        rt = xc_singleton();
+    }
+}
+
 /* 执行垃圾回收 */
 void xc_gc(void) {
-    xc_runtime_t *rt = &xc;
+    ensure_rt();
     xc_gc_run(rt);
 }
 
@@ -118,8 +126,9 @@ void xc_gc_mark(xc_runtime_t *rt, xc_object_t *obj) {
 
 /* 标记值为可达（用于 marker 函数） */
 void _xc_gc_mark_val(xc_val val) {
-    // 获取当前运行时
-    xc_runtime_t *rt = &xc;
+    ensure_rt();
+    // // 获取当前运行时
+    // xc_runtime_t *rt = xc_singleton();
     
     // 转换为对象指针并标记
     xc_object_t *obj = (xc_object_t *)val;
