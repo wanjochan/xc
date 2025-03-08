@@ -293,7 +293,7 @@ xc_object_t *xc_gc_alloc(xc_runtime_t *rt, size_t size, int type_id) {
     // 转换为对象指针
     xc_object_t *obj = (xc_object_t *)memory;
     
-    printf("DEBUG: xc_gc_alloc 分配内存 %p，大小 %zu，类型 %d\n", obj, size, type_id);
+    //printf("DEBUG: xc_gc_alloc 分配内存 %p，大小 %zu，类型 %d\n", obj, size, type_id);
     
     // 初始化对象
     memset(obj, 0, size);

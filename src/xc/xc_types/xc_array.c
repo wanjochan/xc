@@ -57,13 +57,6 @@ static int xc_compare_objects(xc_runtime_t *rt, xc_object_t *a, xc_object_t *b) 
     return xc_compare(rt, a, b);
 }
 
-/* Helper function for reference counting */
-static xc_object_t *xc_gc_retain(xc_runtime_t *rt, xc_object_t *obj) {
-    printf("TODO deprecated xc_gc_retain?\n");
-    // xc_gc_add_ref(rt, obj);
-    return obj;
-}
-
 /* Array methods */
 static void array_mark(xc_runtime_t *rt, xc_object_t *obj) {
     xc_array_t *arr = (xc_array_t *)obj;
@@ -151,7 +144,7 @@ static xc_type_lifecycle_t array_type = {
 static xc_val array_creator(int type, va_list args) {
     // 使用全局运行时实例
     xc_runtime_t *rt = &xc;
-    printf("DEBUG array_creator called, type=%d\n", type);
+    //printf("DEBUG array_creator called, type=%d\n", type);
     // 创建一个空数组
     return xc_array_create(rt);
 }
@@ -159,76 +152,76 @@ static xc_val array_creator(int type, va_list args) {
 /* 方法包装函数 */
 static xc_val array_length_method(xc_val self, xc_val arg) {
     xc_runtime_t *rt = &xc;
-    printf("DEBUG array_length_method called, self=%p\n", self);
+    //printf("DEBUG array_length_method called, self=%p\n", self);
     return (xc_val)xc_array_length(rt, (xc_object_t *)self);
 }
 
 static xc_val array_get_method(xc_val self, xc_val arg) {
     xc_runtime_t *rt = &xc;
-    printf("DEBUG array_get_method called, self=%p, arg=%p\n", self, arg);
+    //printf("DEBUG array_get_method called, self=%p, arg=%p\n", self, arg);
     // 参数应该是一个数字，表示索引
     if (!arg || !rt->is(arg, XC_TYPE_NUMBER)) {
-        printf("DEBUG array_get_method: arg is not a number\n");
+        //printf("DEBUG array_get_method: arg is not a number\n");
         return NULL;
     }
     // 获取索引值
     long index = (long)arg;
-    printf("DEBUG array_get_method: index=%ld\n", index);
+    //printf("DEBUG array_get_method: index=%ld\n", index);
     return xc_array_get(rt, (xc_object_t *)self, index);
 }
 
 static xc_val array_push_method(xc_val self, xc_val arg) {
     xc_runtime_t *rt = &xc;
-    printf("DEBUG array_push_method called, self=%p, arg=%p\n", self, arg);
+    //printf("DEBUG array_push_method called, self=%p, arg=%p\n", self, arg);
     xc_array_push(rt, (xc_object_t *)self, (xc_object_t *)arg);
     return self; // 返回数组自身
 }
 
 static xc_val array_pop_method(xc_val self, xc_val arg) {
     xc_runtime_t *rt = &xc;
-    printf("DEBUG array_pop_method called, self=%p\n", self);
+    //printf("DEBUG array_pop_method called, self=%p\n", self);
     return xc_array_pop(rt, (xc_object_t *)self);
 }
 
 static xc_val array_slice_method(xc_val self, xc_val arg) {
     xc_runtime_t *rt = &xc;
-    printf("DEBUG array_slice_method called, self=%p, arg=%p\n", self, arg);
+    //printf("DEBUG array_slice_method called, self=%p, arg=%p\n", self, arg);
     
     // 参数应该是一个数组，包含起始和结束索引
     if (!arg || !rt->is(arg, XC_TYPE_ARRAY)) {
-        printf("DEBUG array_slice_method: arg is not an array\n");
+        //printf("DEBUG array_slice_method: arg is not an array\n");
         return NULL;
     }
     
     // 获取起始索引
     xc_val start_val = xc_array_get(rt, (xc_object_t *)arg, 0);
     if (!start_val || !rt->is(start_val, XC_TYPE_NUMBER)) {
-        printf("DEBUG array_slice_method: start index is not a number\n");
+        //printf("DEBUG array_slice_method: start index is not a number\n");
         return NULL;
     }
     
     // 获取结束索引
     xc_val end_val = xc_array_get(rt, (xc_object_t *)arg, 1);
     if (!end_val || !rt->is(end_val, XC_TYPE_NUMBER)) {
-        printf("DEBUG array_slice_method: end index is not a number\n");
+        //printf("DEBUG array_slice_method: end index is not a number\n");
         return NULL;
     }
     
     int start = (int)xc_number_value(rt, (xc_object_t *)start_val);
     int end = (int)xc_number_value(rt, (xc_object_t *)end_val);
     
-    printf("DEBUG array_slice_method: start=%d, end=%d\n", start, end);
+    //printf("DEBUG array_slice_method: start=%d, end=%d\n", start, end);
     
     return xc_array_slice(rt, (xc_object_t *)self, start, end);
 }
 
 static xc_val array_concat_method(xc_val self, xc_val arg) {
     xc_runtime_t *rt = &xc;
-    printf("DEBUG array_concat_method called, self=%p, arg=%p\n", self, arg);
+    //printf("DEBUG array_concat_method called, self=%p, arg=%p\n", self, arg);
     
     // 参数应该是一个数组
     if (!arg || !rt->is(arg, XC_TYPE_ARRAY)) {
-        printf("DEBUG array_concat_method: arg is not an array\n");
+        //printf("DEBUG array_concat_method: arg is not an array\n");
         return NULL;
     }
     
@@ -237,11 +230,11 @@ static xc_val array_concat_method(xc_val self, xc_val arg) {
 
 static xc_val array_join_method(xc_val self, xc_val arg) {
     xc_runtime_t *rt = &xc;
-    printf("DEBUG array_join_method called, self=%p, arg=%p\n", self, arg);
+    //printf("DEBUG array_join_method called, self=%p, arg=%p\n", self, arg);
     
     // 参数应该是一个字符串，表示分隔符
     if (!arg || !rt->is(arg, XC_TYPE_STRING)) {
-        printf("DEBUG array_join_method: arg is not a string\n");
+        //printf("DEBUG array_join_method: arg is not a string\n");
         return NULL;
     }
     
@@ -252,15 +245,15 @@ static xc_val array_join_method(xc_val self, xc_val arg) {
 static void array_initializer() {
     xc_runtime_t *rt = &xc;
     // 数组类型的初始化逻辑
-    printf("DEBUG array_initializer called\n");
-    printf("DEBUG array_initializer: registering methods for type %d\n", XC_TYPE_ARRAY);
-    printf("DEBUG array_initializer: length method at %p\n", array_length_method);
-    printf("DEBUG array_initializer: get method at %p\n", array_get_method);
-    printf("DEBUG array_initializer: push method at %p\n", array_push_method);
-    printf("DEBUG array_initializer: pop method at %p\n", array_pop_method);
-    printf("DEBUG array_initializer: slice method at %p\n", array_slice_method);
-    printf("DEBUG array_initializer: concat method at %p\n", array_concat_method);
-    printf("DEBUG array_initializer: join method at %p\n", array_join_method);
+    //printf("DEBUG array_initializer called\n");
+    //printf("DEBUG array_initializer: registering methods for type %d\n", XC_TYPE_ARRAY);
+    //printf("DEBUG array_initializer: length method at %p\n", array_length_method);
+    //printf("DEBUG array_initializer: get method at %p\n", array_get_method);
+    //printf("DEBUG array_initializer: push method at %p\n", array_push_method);
+    //printf("DEBUG array_initializer: pop method at %p\n", array_pop_method);
+    //printf("DEBUG array_initializer: slice method at %p\n", array_slice_method);
+    //printf("DEBUG array_initializer: concat method at %p\n", array_concat_method);
+    //printf("DEBUG array_initializer: join method at %p\n", array_join_method);
     
     /* 注册数组方法 */
     rt->register_method(XC_TYPE_ARRAY, "length", array_length_method);
@@ -271,19 +264,19 @@ static void array_initializer() {
     rt->register_method(XC_TYPE_ARRAY, "concat", array_concat_method);
     rt->register_method(XC_TYPE_ARRAY, "join", array_join_method);
     
-    printf("DEBUG array_initializer: methods registered\n");
+    //printf("DEBUG array_initializer: methods registered\n");
 }
 
 /* Register array type */
 void xc_register_array_type(xc_runtime_t *rt) {
-    printf("DEBUG xc_register_array_type: registering array type\n");
+    //printf("DEBUG xc_register_array_type: registering array type\n");
     
     /* 注册类型 */
     int type_id = xc_register_type("array", &array_type);
     
     /* 使用 XC_RUNTIME_EXT 宏访问扩展运行时结构体 */
     xc_array_type = &array_type;
-    printf("DEBUG xc_register_array_type: set array_type to %p\n", xc_array_type);
+    //printf("DEBUG xc_register_array_type: set array_type to %p\n", xc_array_type);
     
     /* 调用初始化函数注册数组方法 */
     array_initializer();
@@ -317,16 +310,16 @@ static bool array_ensure_capacity(xc_array_t *arr, size_t needed) {
 
 /* Array creation */
 xc_object_t *xc_array_create(xc_runtime_t *rt) {
-    printf("DEBUG xc_array_create called\n");
+    //printf("DEBUG xc_array_create called\n");
     return xc_array_create_with_capacity(rt, 0);
 }
 
 /* Create array with initial values */
 xc_object_t *xc_array_create_with_values(xc_runtime_t *rt, xc_object_t **values, size_t count) {
-    printf("DEBUG xc_array_create_with_values called, count=%zu\n", count);
+    //printf("DEBUG xc_array_create_with_values called, count=%zu\n", count);
     xc_object_t *arr = xc_array_create_with_capacity(rt, count);
     if (!arr) {
-        printf("DEBUG xc_array_create_with_values: failed to create array\n");
+        //printf("DEBUG xc_array_create_with_values: failed to create array\n");
         return NULL;
     }
     
@@ -338,14 +331,14 @@ xc_object_t *xc_array_create_with_values(xc_runtime_t *rt, xc_object_t **values,
 }
 
 xc_object_t *xc_array_create_with_capacity(xc_runtime_t *rt, size_t capacity) {
-    printf("DEBUG xc_array_create_with_capacity called, capacity=%zu\n", capacity);
-    printf("DEBUG xc_array_create_with_capacity: rt=%p\n", rt);
-    printf("DEBUG xc_array_create_with_capacity: array_type=%p\n", xc_array_type);
+    //printf("DEBUG xc_array_create_with_capacity called, capacity=%zu\n", capacity);
+    //printf("DEBUG xc_array_create_with_capacity: rt=%p\n", rt);
+    //printf("DEBUG xc_array_create_with_capacity: array_type=%p\n", xc_array_type);
     
     /* 分配内存 */
     xc_array_t *arr = (xc_array_t *)xc_gc_alloc(rt, sizeof(xc_array_t), XC_TYPE_ARRAY);
     if (!arr) {
-        printf("DEBUG xc_array_create_with_capacity: failed to allocate memory\n");
+        //printf("DEBUG xc_array_create_with_capacity: failed to allocate memory\n");
         return NULL;
     }
     
@@ -366,7 +359,7 @@ xc_object_t *xc_array_create_with_capacity(xc_runtime_t *rt, size_t capacity) {
         arr->items = NULL;
     }
     
-    printf("DEBUG xc_array_create_with_capacity: returning array at %p\n", arr);
+    //printf("DEBUG xc_array_create_with_capacity: returning array at %p\n", arr);
     return (xc_object_t *)arr;
 }
 
@@ -531,7 +524,7 @@ xc_object_t *xc_array_slice(xc_runtime_t *rt, xc_object_t *arr, int start, int e
     /* Copy elements to the new array */
     for (int i = start; i < end; i++) {
         // 增加引用计数，因为我们要将对象添加到新数组中
-        xc_gc_retain(rt, array->items[i]);
+        //xc_gc_retain(rt, array->items[i]);
         xc_array_push(rt, slice, array->items[i]);
     }
     
@@ -556,14 +549,14 @@ xc_object_t *xc_array_concat(xc_runtime_t *rt, xc_object_t *arr1, xc_object_t *a
     /* Copy elements from first array */
     for (size_t i = 0; i < array1->length; i++) {
         // 增加引用计数，因为我们要将对象添加到新数组中
-        xc_gc_retain(rt, array1->items[i]);
+        //xc_gc_retain(rt, array1->items[i]);
         xc_array_push(rt, result, array1->items[i]);
     }
     
     /* Copy elements from second array */
     for (size_t i = 0; i < array2->length; i++) {
         // 增加引用计数，因为我们要将对象添加到新数组中
-        xc_gc_retain(rt, array2->items[i]);
+        //xc_gc_retain(rt, array2->items[i]);
         xc_array_push(rt, result, array2->items[i]);
     }
     
@@ -614,7 +607,8 @@ static xc_object_t *xc_to_string_internal(xc_runtime_t *rt, xc_object_t *obj) {
     }
     
     if (xc_is_string(rt, obj)) {
-        return xc_gc_retain(rt, obj);
+        //return xc_gc_retain(rt, obj);
+        return obj;
     }
     
     if (xc_is_number(rt, obj)) {
