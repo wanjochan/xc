@@ -3,16 +3,15 @@
 
 static xc_runtime_t* rt = NULL;
 
-
 // Define MAX_TYPE_ID as 10
-#define MAX_TYPE_ID 10
+#define MAX_TYPE_ID 255
 
 // Define xc_type_handlers as an array of type lifecycle pointers
-xc_type_lifecycle_t *xc_type_handlers[256];
+xc_type_lifecycle_t *xc_type_handlers[MAX_TYPE_ID];
 
 /* 根据类型ID获取类型处理器 */
 xc_type_lifecycle_t* get_type_handler(int type_id) {
-    if (type_id >= 0 && type_id < 256) {
+    if (type_id >= 0 && type_id < MAX_TYPE_ID) {
         return xc_type_handlers[type_id];
     }
     return NULL;

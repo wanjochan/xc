@@ -29,8 +29,9 @@ typedef struct {
 } xc_type_registry_t;
 
 /* Global type handlers and instances */
-extern xc_type_lifecycle_t *xc_type_handlers[256];
-extern xc_type_registry_t type_registry;
+// extern xc_type_lifecycle_t *xc_type_handlers[256];
+extern xc_type_registry_t type_registry;//xc.c
+// xc_type_registry_t type_registry;
 
 ////NOTES： 其实可以后面设计一个 xc.get_type_by_id()来获得的，当然会慢一些，所以先考虑好再说
 /* Primitive type handlers */

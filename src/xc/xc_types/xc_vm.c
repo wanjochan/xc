@@ -1,6 +1,8 @@
 #include "../xc.h"
 #include "../xc_internal.h"
 
+xc_runtime_t* rt = NULL;
+
 /**
  * ============================================================================
  * XC 虚拟机实现 (VM Implementation)
@@ -264,49 +266,49 @@ static xc_val vm_get_exception(xc_val self, xc_val arg);
 
 /* VM 类型方法 */
 static xc_val vm_to_string(xc_val self, xc_val arg) {
-    return xc.new(XC_TYPE_STRING, "vm");
+    return rt->new(XC_TYPE_STRING, "vm");
 }
 
 /* 执行 VM 中的字节码 */
 static xc_val vm_execute(xc_val self, xc_val arg) {
     // TODO: 实现字节码执行逻辑
-    return xc.new(XC_TYPE_NULL);
+    return rt->new(XC_TYPE_NULL);
 }
 
 /* 添加指令到 VM */
 static xc_val vm_add_instruction(xc_val self, xc_val arg) {
     // TODO: 实现添加指令逻辑
-    return xc.new(XC_TYPE_BOOL, 1);
+    return rt->new(XC_TYPE_BOOL, 1);
 }
 
 /* 重置 VM 状态 */
 static xc_val vm_reset(xc_val self, xc_val arg) {
     // TODO: 实现重置逻辑
-    return xc.new(XC_TYPE_BOOL, 1);
+    return rt->new(XC_TYPE_BOOL, 1);
 }
 
 /* 获取执行结果 */
 static xc_val vm_get_result(xc_val self, xc_val arg) {
     // TODO: 实现获取结果逻辑
-    return xc.new(XC_TYPE_NULL);
+    return rt->new(XC_TYPE_NULL);
 }
 
 /* 设置全局变量 */
 static xc_val vm_set_global(xc_val self, xc_val arg) {
     // TODO: 实现设置全局变量逻辑
-    return xc.new(XC_TYPE_BOOL, 1);
+    return rt->new(XC_TYPE_BOOL, 1);
 }
 
 /* 启用或禁用JIT编译 */
 static xc_val vm_enable_jit(xc_val self, xc_val arg) {
     // TODO: 实现JIT启用/禁用逻辑
-    return xc.new(XC_TYPE_BOOL, 1);
+    return rt->new(XC_TYPE_BOOL, 1);
 }
 
 /* 获取当前异常 */
 static xc_val vm_get_exception(xc_val self, xc_val arg) {
     // TODO: 实现获取异常逻辑
-    return xc.new(XC_TYPE_NULL);
+    return rt->new(XC_TYPE_NULL);
 }
 
 /* VM 类型的 GC 标记方法 */
@@ -323,14 +325,14 @@ static int vm_destroy(xc_val self) {
 /* VM 类型初始化 */
 static void vm_initialize(void) {
     // 注册方法
-    xc.register_method(XC_TYPE_VM, "toString", vm_to_string);
-    xc.register_method(XC_TYPE_VM, "execute", vm_execute);
-    xc.register_method(XC_TYPE_VM, "addInstruction", vm_add_instruction);
-    xc.register_method(XC_TYPE_VM, "reset", vm_reset);
-    xc.register_method(XC_TYPE_VM, "getResult", vm_get_result);
-    xc.register_method(XC_TYPE_VM, "setGlobal", vm_set_global);
-    xc.register_method(XC_TYPE_VM, "enableJIT", vm_enable_jit);
-    xc.register_method(XC_TYPE_VM, "getException", vm_get_exception);
+    rt->register_method(XC_TYPE_VM, "toString", vm_to_string);
+    rt->register_method(XC_TYPE_VM, "execute", vm_execute);
+    rt->register_method(XC_TYPE_VM, "addInstruction", vm_add_instruction);
+    rt->register_method(XC_TYPE_VM, "reset", vm_reset);
+    rt->register_method(XC_TYPE_VM, "getResult", vm_get_result);
+    rt->register_method(XC_TYPE_VM, "setGlobal", vm_set_global);
+    rt->register_method(XC_TYPE_VM, "enableJIT", vm_enable_jit);
+    rt->register_method(XC_TYPE_VM, "getException", vm_get_exception);
 }
 
 /* VM 类型创建函数 */
@@ -357,14 +359,15 @@ static xc_type_lifecycle_t vm_type = {
 };
 
 __attribute__((constructor)) static void register_vm_type(void) {
+    rt = xc_singleton();
     /* 注册类型 */
-    _xc_type_vm = xc.register_type("vm", &vm_type);
+    _xc_type_vm = rt->register_type("vm", &vm_type);
     // vm_initialize();
 }
 
 /* 创建 VM 对象 */
 xc_val xc_vm_create(int stack_size) {
-    return xc.new(XC_TYPE_VM, stack_size);
+    return rt->new(XC_TYPE_VM, stack_size);
 }
 
 /* 使用示例:
@@ -373,22 +376,22 @@ xc_val xc_vm_create(int stack_size) {
 xc_val vm = xc_vm_create(256);
 
 // 添加指令
-xc_val instr1 = xc.new(XC_TYPE_ARRAY, 2, xc.new(XC_TYPE_NUMBER, OP_PUSH_VAL), xc.new(XC_TYPE_NUMBER, 10));
-xc.call(vm, "addInstruction", instr1);
+xc_val instr1 = rt->new(XC_TYPE_ARRAY, 2, rt->new(XC_TYPE_NUMBER, OP_PUSH_VAL), rt->new(XC_TYPE_NUMBER, 10));
+rt->call(vm, "addInstruction", instr1);
 
-xc_val instr2 = xc.new(XC_TYPE_ARRAY, 2, xc.new(XC_TYPE_NUMBER, OP_PUSH_VAL), xc.new(XC_TYPE_NUMBER, 20));
-xc.call(vm, "addInstruction", instr2);
+xc_val instr2 = rt->new(XC_TYPE_ARRAY, 2, rt->new(XC_TYPE_NUMBER, OP_PUSH_VAL), rt->new(XC_TYPE_NUMBER, 20));
+rt->call(vm, "addInstruction", instr2);
 
-xc_val instr3 = xc.new(XC_TYPE_ARRAY, 1, xc.new(XC_TYPE_NUMBER, OP_ADD));
-xc.call(vm, "addInstruction", instr3);
+xc_val instr3 = rt->new(XC_TYPE_ARRAY, 1, rt->new(XC_TYPE_NUMBER, OP_ADD));
+rt->call(vm, "addInstruction", instr3);
 
-xc_val instr4 = xc.new(XC_TYPE_ARRAY, 1, xc.new(XC_TYPE_NUMBER, OP_RET));
-xc.call(vm, "addInstruction", instr4);
+xc_val instr4 = rt->new(XC_TYPE_ARRAY, 1, rt->new(XC_TYPE_NUMBER, OP_RET));
+rt->call(vm, "addInstruction", instr4);
 
 // 执行 VM
-xc.call(vm, "execute", NULL);
+rt->call(vm, "execute", NULL);
 
 // 获取结果
-xc_val result = xc.call(vm, "getResult", NULL);
-xc.print(result); // 输出 30
+xc_val result = rt->call(vm, "getResult", NULL);
+rt->print(result); // 输出 30
 */ 
