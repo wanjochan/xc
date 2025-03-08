@@ -11,6 +11,10 @@ static xc_val string_creator(int type, va_list args);
 static xc_val string_concat_method(xc_val obj, xc_val arg);
 static xc_val string_length_method(xc_val obj, xc_val arg);
 
+/* 值访问和类型转换函数 */
+static void* string_get_value(xc_val obj);
+static xc_val string_convert_to(xc_val obj, int target_type);
+
 /* String object structure */
 typedef struct {
     xc_object_t base;  /* Must be first */
@@ -78,6 +82,20 @@ void xc_register_string_type(xc_runtime_t *rt) {
     /* 注册字符串方法 */
     rt->register_method(XC_TYPE_STRING, "concat", string_concat_method);
     rt->register_method(XC_TYPE_STRING, "length", string_length_method);
+    
+    /* 设置生命周期函数 */
+    string_type.initializer = NULL;
+    string_type.cleaner = NULL;
+    string_type.creator = string_creator;
+    string_type.destroyer = (xc_destroy_func)string_free;
+    string_type.marker = (xc_marker_func)string_mark;
+    string_type.name = "string";
+    string_type.equal = (void*)string_equal;
+    string_type.compare = (void*)string_compare;
+    
+    /* 新增：值访问和类型转换 */
+    string_type.get_value = string_get_value;
+    string_type.convert_to = string_convert_to;
 }
 
 /* Internal helper functions */
@@ -219,4 +237,41 @@ const char *xc_to_string(xc_runtime_t *rt, xc_object_t *obj) {
     }
 
     return "object";
+}
+
+/* 获取字符串值 */
+static void* string_get_value(xc_val obj) {
+    xc_string_t* string = (xc_string_t*)obj;
+    // 返回指向字符串数据的指针
+    return string->data;
+}
+
+/* 转换到其他类型 */
+static xc_val string_convert_to(xc_val obj, int target_type) {
+    xc_string_t* string = (xc_string_t*)obj;
+    const char* str = string->data;
+    
+    switch (target_type) {
+        case XC_TYPE_BOOL:
+            // 非空字符串为true
+            return xc.new(XC_TYPE_BOOL, str && str[0] != '\0');
+            
+        case XC_TYPE_NUMBER: {
+            // 尝试将字符串转换为数字
+            char* end;
+            double value = strtod(str, &end);
+            // 如果转换成功（end不等于str且end指向字符串结束符或空白字符）
+            if (end != str && (*end == '\0' || isspace(*end))) {
+                return xc.new(XC_TYPE_NUMBER, value);
+            }
+            // 转换失败，返回0
+            return xc.new(XC_TYPE_NUMBER, 0.0);
+        }
+            
+        case XC_TYPE_STRING:
+            return obj; // 已经是字符串类型
+            
+        default:
+            return NULL; // 不支持的转换
+    }
 }

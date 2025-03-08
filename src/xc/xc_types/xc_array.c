@@ -13,6 +13,10 @@ static int array_compare(xc_runtime_t *rt, xc_object_t *a, xc_object_t *b);
 static xc_val array_creator(int type, va_list args);
 static void array_initializer(void);
 
+/* 值访问和类型转换函数 */
+static void* array_get_value(xc_val obj);
+static xc_val array_convert_to(xc_val obj, int target_type);
+
 /* Helper functions for type checking - these should match the xc_is_* functions in other files */
 static bool xc_is_array_object(xc_runtime_t *rt, xc_object_t *obj) {
     return xc_is_array(rt, obj);
@@ -281,6 +285,20 @@ void xc_register_array_type(xc_runtime_t *rt) {
     
     /* 调用初始化函数注册数组方法 */
     array_initializer();
+
+    // 设置生命周期函数
+    array_type.initializer = (xc_initializer_func)array_initializer;
+    array_type.cleaner = NULL;
+    array_type.creator = array_creator;
+    array_type.destroyer = (xc_destroy_func)array_free;
+    array_type.marker = (xc_marker_func)array_mark;
+    array_type.name = "array";
+    array_type.equal = (void*)array_equal;
+    array_type.compare = (void*)array_compare;
+    
+    // 新增：值访问和类型转换
+    array_type.get_value = array_get_value;
+    array_type.convert_to = array_convert_to;
 }
 
 /* Ensure array has enough capacity */
@@ -734,4 +752,40 @@ xc_object_t *xc_array_join(xc_runtime_t *rt, xc_object_t *arr, xc_object_t *sepa
 /* Type checking */
 bool xc_is_array(xc_runtime_t *rt, xc_object_t *obj) {
     return obj && obj->type_id == XC_TYPE_ARRAY;
+}
+
+/* 获取数组值（返回长度） */
+static void* array_get_value(xc_val obj) {
+    xc_array_t* array = (xc_array_t*)obj;
+    // 返回指向长度的指针（注意：这里需要静态存储）
+    static size_t length;
+    length = array->length;
+    return &length;
+}
+
+/* 转换到其他类型 */
+static xc_val array_convert_to(xc_val obj, int target_type) {
+    xc_array_t* array = (xc_array_t*)obj;
+    
+    switch (target_type) {
+        case XC_TYPE_BOOL:
+            // 非空数组为true
+            return xc.new(XC_TYPE_BOOL, array->length > 0);
+            
+        case XC_TYPE_NUMBER:
+            // 返回数组长度
+            return xc.new(XC_TYPE_NUMBER, (double)array->length);
+            
+        case XC_TYPE_STRING: {
+            // 将数组转换为字符串表示
+            // 这里简化处理，返回类似 "[object Array]" 的字符串
+            return xc.new(XC_TYPE_STRING, "[object Array]");
+        }
+            
+        case XC_TYPE_ARRAY:
+            return obj; // 已经是数组类型
+            
+        default:
+            return NULL; // 不支持的转换
+    }
 }

@@ -5,6 +5,12 @@
 //@ref build_libxc.sh: xc.h => libxc.h for libxc.a
 
 #include "cosmopolitan.h" //will change to infrax in later versionss
+/* Type flags */
+#define XC_TYPE_PRIMITIVE  0x0001  /* Primitive type (number, string, etc) */
+#define XC_TYPE_COMPOSITE 0x0002   /* Composite type (array, object) */
+#define XC_TYPE_CALLABLE  0x0004   /* Callable type (function) */
+#define XC_TYPE_INTERNAL  0x0008   /* Internal type */
+
 
 #define XC_FALSE 0
 #define XC_TRUE 1
@@ -75,7 +81,7 @@ GC 提供一个回调函数（mark_func），类型实现使用它标记子对�
 
 typedef void (*mark_func)(xc_val);
 typedef void (*xc_marker_func)(xc_val, mark_func);
-typedef xc_val (*xc_allocator_func)(size_t size);
+// typedef xc_val (*xc_allocator_func)(size_t size);
 typedef xc_val (*xc_method_func)(xc_val self, xc_val arg);
 
 /* 类型生命周期管理结构 */
@@ -88,8 +94,15 @@ typedef struct {
     //xc_allocator_func allocator;      /* 内存分配函数 */
     xc_marker_func marker;            /* GC标记函数 */
     const char *name;
+
+    //TODO 可能取消 equal/compare,逻辑自己用 get_value()来计算.
     bool (*equal)(xc_val a, xc_val b);
     int (*compare)(xc_val a, xc_val b);
+    
+    // 值访问和类型转换
+    void* (*get_value)(xc_val obj);                /* 获取原生值 */
+    xc_val (*convert_to)(xc_val obj, int target_type); /* 转换到目标类型 */
+    
     int flags;//保留
 } xc_type_lifecycle_t;
 
@@ -114,7 +127,7 @@ typedef struct xc_runtime_t {
 考虑添加弱引用支持
 可能的话添加终结器（finalizer）机制
 */
-    //xc_val (*alloc)(int type, ...);//TODO link gc_alloc
+    xc_val (*alloc)(int type, size_t size);//TODO link gc_alloc
 
     xc_val (*new)(int type, ...);//TODO add flags for "const"
    //xc_val (*delete)(xc_val);//xc_delete
@@ -126,6 +139,10 @@ typedef struct xc_runtime_t {
     int (*get_type_id)(const char* name);
     //TODO 可以考虑加一个 get_type_by_id()=>xc_type_lifecycle_t* 
     
+    // 新增：通过类型生命周期获取值和转换类型的辅助函数
+    void* (*get_type_value)(xc_val obj);
+    xc_val (*convert_type)(xc_val obj, int target_type);
+
     //runtime, calling stack
     char (*register_method)(int type, const char* func_name, xc_method_func native_func);
     xc_val (*call)(xc_val obj, const char* method, ...);
@@ -142,7 +159,10 @@ typedef struct xc_runtime_t {
 } xc_runtime_t;
 
 /* xc global instance */
-extern xc_runtime_t xc;
+extern xc_runtime_t xc;//TODO remove for nameing conflicts
+
+//TODO 解决命名冲突
+xc_runtime_t* xc_singleton(void);
 
 #endif /* XC_H */
 /**

@@ -42,6 +42,38 @@ static int number_compare(xc_runtime_t *rt, xc_object_t *a, xc_object_t *b) {
     return 0;
 }
 
+/* 获取数字值 */
+static void* number_get_value(xc_val obj) {
+    xc_number_t* number = (xc_number_t*)obj;
+    // 返回指向值的指针（注意：这里需要静态存储）
+    static double value;
+    value = number->value;
+    return &value;
+}
+
+/* 转换到其他类型 */
+static xc_val number_convert_to(xc_val obj, int target_type) {
+    xc_number_t* number = (xc_number_t*)obj;
+    double value = number->value;
+    
+    switch (target_type) {
+        case XC_TYPE_BOOL:
+            return xc.new(XC_TYPE_BOOL, value != 0.0);
+            
+        case XC_TYPE_NUMBER:
+            return obj; // 已经是数字类型
+            
+        case XC_TYPE_STRING: {
+            char buffer[32];
+            snprintf(buffer, sizeof(buffer), "%g", value);
+            return xc.new(XC_TYPE_STRING, buffer);
+        }
+            
+        default:
+            return NULL; // 不支持的转换
+    }
+}
+
 /* Type descriptor for number type */
 static xc_type_lifecycle_t number_type = {
     .initializer = NULL,
@@ -53,7 +85,9 @@ static xc_type_lifecycle_t number_type = {
     .name = "number",
     .equal = (bool (*)(xc_val, xc_val))number_equal,
     .compare = (int (*)(xc_val, xc_val))number_compare,
-    .flags = XC_TYPE_PRIMITIVE
+    .flags = XC_TYPE_PRIMITIVE,
+    .get_value = number_get_value,
+    .convert_to = number_convert_to
 };
 
 /* Number creator function for use with create() */
@@ -69,8 +103,8 @@ static xc_val number_creator(int type, va_list args) {
 void xc_register_number_type(xc_runtime_t *rt) {
     /* 定义类型生命周期管理接口 */
     /* 注册类型 */
-    int type_id = xc_register_type("number", &number_type);
-    xc_number_type = &number_type;
+    int type_id = rt->register_type("number", &number_type);
+    // xc_number_type = &number_type;
 }
 
 /* Create a number object */

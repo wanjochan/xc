@@ -35,7 +35,7 @@ extern xc_type_registry_t type_registry;
 ////NOTES： 其实可以后面设计一个 xc.get_type_by_id()来获得的，当然会慢一些，所以先考虑好再说
 /* Primitive type handlers */
 extern xc_type_lifecycle_t *xc_null_type;
-extern xc_type_lifecycle_t *xc_boolean_type;
+// extern xc_type_lifecycle_t *xc_boolean_type;
 extern xc_type_lifecycle_t *xc_number_type;
 extern xc_type_lifecycle_t *xc_string_type;
 extern xc_type_lifecycle_t *xc_array_type;
@@ -89,12 +89,6 @@ typedef xc_val (*xc_function_ptr_t)(xc_runtime_t *rt, xc_val this_obj, int argc,
 //     struct xc_object *gc_next; /* Next object in the GC list */
 //     /* Object data follows this header */
 // } xc_object_t;
-
-/* Type flags */
-#define XC_TYPE_PRIMITIVE  0x0001  /* Primitive type (number, string, etc) */
-#define XC_TYPE_COMPOSITE 0x0002   /* Composite type (array, object) */
-#define XC_TYPE_CALLABLE  0x0004   /* Callable type (function) */
-#define XC_TYPE_INTERNAL  0x0008   /* Internal type */
 
 /*
  * Type handler structure

@@ -360,6 +360,7 @@ void xc_gc_mark_permanent(xc_runtime_t *rt, xc_object_t *obj) {
 // }
 
 /* Add a root object to the root set */
+//using dtc() !!!!! TODO
 void xc_gc_add_root(xc_runtime_t *rt, xc_object_t **root_ptr) {
     if (!root_ptr) return;
     

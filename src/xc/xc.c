@@ -1,6 +1,9 @@
 #include "xc.h"
 #include "xc_internal.h"
 
+static xc_runtime_t* rt = NULL;
+
+
 // Define MAX_TYPE_ID as 10
 #define MAX_TYPE_ID 10
 
@@ -41,42 +44,25 @@ static xc_type_entry_t* find_type_by_id(int type_id) {
     return NULL;
 }
 
-// //tool for creator
-// static xc_val xc_alloc_object(int type, ...) {
-//     if (type < 0 || type >= 16) return NULL;
+//tool for creator
+static xc_val xc_alloc(int type, size_t size) {
+    if (type < 0 || type >= 16) return NULL;
     
-//     /* 获取类型注册项 */
-//     xc_type_entry_t* entry = find_type_by_id(type);
-//     if (!entry) {
-//         return NULL;
-//     }
+    /* 获取类型注册项 */
+    xc_type_entry_t* entry = find_type_by_id(type);
+    if (!entry) {
+        printf("WARNING: xc_alloc: type %d not found\n", type);
+        return NULL;
+    }
     
-//     /* 获取对象大小 */
-//     va_list args;
-//     va_start(args, type);
-//     size_t size = va_arg(args, size_t);
-//     va_end(args);
+    // /* 获取对象大小 */
+    // va_list args;
+    // va_start(args, type);
+    // size_t size = va_arg(args, size_t);
+    // va_end(args);
     
-//     /* 分配对象内存 */
-//     xc_header_t* header;
-
-//     // 使用 GC 模块的内存分配函数
-//     header = (xc_header_t*)xc_gc_allocate_raw_memory(size + sizeof(xc_header_t), type);
-    
-//     if (!header) {
-//         return NULL;
-//     }
-    
-//     header->type_name = entry->name;
-    
-//     /* 计算对象部分的指针 */
-//     void* obj = XC_OBJECT(header);
-    
-//     /* 清零数据区 */
-//     memset(obj, 0, size);
-    
-//     return obj;
-// }
+    return xc_gc_alloc(rt, size, type);
+}
 
 /* 通过名称查找类型ID */
 static int find_type_id_by_name(const char* name) {
@@ -93,6 +79,39 @@ static int find_type_id_by_name(const char* name) {
     }
     
     return -1;  /* 未找到 */
+}
+
+/* 获取对象的原生值 */
+static void* get_type_value(xc_val obj) {
+    if (!obj) return NULL;
+    
+    int type_id = obj->type_id;
+    xc_type_lifecycle_t* lifecycle = get_type_handler(type_id);
+    
+    if (lifecycle && lifecycle->get_value) {
+        return lifecycle->get_value(obj);
+    }
+    
+    return NULL;
+}
+
+/* 将对象转换为目标类型 */
+static xc_val convert_type(xc_val obj, int target_type) {
+    if (!obj) return NULL;
+    
+    // 如果已经是目标类型，直接返回
+    if (obj->type_id == target_type) {
+        return obj;
+    }
+    
+    int type_id = obj->type_id;
+    xc_type_lifecycle_t* lifecycle = get_type_handler(type_id);
+    
+    if (lifecycle && lifecycle->convert_to) {
+        return lifecycle->convert_to(obj, target_type);
+    }
+    
+    return NULL;
 }
 
 /* 注册类型 */
@@ -314,7 +333,7 @@ xc_val xc_dot(xc_val obj, const char* key, ...) {
             va_list setter_args;
             va_copy(setter_args, args);
             va_arg(setter_args, xc_val); // 跳过value参数，因为已经读取了
-            xc_val result = general_setter(obj, xc.new(XC_TYPE_STRING, key));
+            xc_val result = general_setter(obj, rt->new(XC_TYPE_STRING, key));
             va_end(setter_args);
             va_end(args);
             return result;
@@ -325,12 +344,12 @@ xc_val xc_dot(xc_val obj, const char* key, ...) {
             /* 对于对象类型，我们使用特定的对象操作函数 */
             /* 在实际代码中，应该通过结构体访问或函数指针访问 object_set */
             /* 假设有一个合适的API，例如 */
-            xc_val key_obj = xc.new(XC_TYPE_STRING, key);
+            xc_val key_obj = rt->new(XC_TYPE_STRING, key);
             /* 注意：这里我们应该直接访问对象系统的API，而不是直接调用内部函数 */
             /* 假设有一个合适的API，例如 */
             xc_method_func obj_set = find_method(XC_TYPE_OBJECT, "set");
             if (obj_set) {
-                xc_val args_array = xc.new(XC_TYPE_ARRAY, 2, key_obj, value);
+                xc_val args_array = rt->new(XC_TYPE_ARRAY, 2, key_obj, value);
                 obj_set(obj, args_array);
             }
             va_end(args);
@@ -367,17 +386,17 @@ xc_val xc_dot(xc_val obj, const char* key, ...) {
     
     if (methods[1]) {
         // return methods[1];  // 返回方法函数本身，以便后续调用
-        return xc.new(XC_TYPE_FUNC, method_names[1], methods[1]);
+        return rt->new(XC_TYPE_FUNC, method_names[1], methods[1]);
     }
     
     if (methods[2]) {
-        return methods[2](obj, xc.new(XC_TYPE_STRING, key));
+        return methods[2](obj, rt->new(XC_TYPE_STRING, key));
     }
     
     /* 如果这是对象类型，直接获取属性 */
     if (type == XC_TYPE_OBJECT) {
         /* 对于对象类型，我们使用特定的对象操作函数 */
-        xc_val key_obj = xc.new(XC_TYPE_STRING, key);
+        xc_val key_obj = rt->new(XC_TYPE_STRING, key);
         /* 注意：这里我们应该直接访问对象系统的API，而不是直接调用内部函数 */
         /* 假设有一个合适的API，例如 */
         xc_method_func obj_get = find_method(XC_TYPE_OBJECT, "get");
@@ -456,9 +475,9 @@ static void throw_internal(xc_val error, bool allow_rethrow) {
     } else {
         /* 打印错误信息 */
         printf("未捕获的异常: ");
-        if (xc.is(error, XC_TYPE_STRING)) {
+        if (rt->is(error, XC_TYPE_STRING)) {
             printf("%s\n", (char*)error);
-        } else if (xc.is(error, XC_TYPE_EXCEPTION)) {
+        } else if (rt->is(error, XC_TYPE_EXCEPTION)) {
             xc_exception_t *exc = (xc_exception_t *)error;
             printf("%s\n", exc->message ? exc->message : "<无消息>");
             
@@ -495,7 +514,7 @@ static void throw_internal(xc_val error, bool allow_rethrow) {
 /* 公共异常抛出函数 */
 static void throw(xc_val error) {
     /* 调用异常模块的抛出函数 */
-    xc_exception_throw(&xc, error);
+    xc_exception_throw(rt, error);
 }
 
 /* 添加允许重新抛出的版本，在确实需要的场景使用 */
@@ -507,13 +526,13 @@ static void throw_with_rethrow(xc_val error) {
     }
     
     /* 调用异常模块的抛出函数 */
-    xc_exception_throw(&xc, error);
+    xc_exception_throw(rt, error);
 }
 
 static xc_val try_catch_finally(xc_val try_func, xc_val catch_func, xc_val finally_func) {
     /* 检查参数 */
-    if (!try_func || !xc.is(try_func, XC_TYPE_FUNC)) {
-        xc_val error = xc.new(XC_TYPE_EXCEPTION, "try_func必须是函数类型");
+    if (!try_func || !rt->is(try_func, XC_TYPE_FUNC)) {
+        xc_val error = rt->new(XC_TYPE_EXCEPTION, "try_func必须是函数类型");
         throw(error);
         return NULL;
     }
@@ -556,7 +575,7 @@ static xc_val try_catch_finally(xc_val try_func, xc_val catch_func, xc_val final
         printf("DEBUG: 异常对象=%p，类型=%d\n", error, xc_typeof(error));
         
         /* 如果有catch处理器，调用它 */
-        if (catch_func && xc.is(catch_func, XC_TYPE_FUNC)) {
+        if (catch_func && rt->is(catch_func, XC_TYPE_FUNC)) {
             printf("DEBUG: 调用catch处理器\n");
             push_stack_frame("catch_handler", __FILE__, __LINE__);
             
@@ -584,7 +603,7 @@ static xc_val try_catch_finally(xc_val try_func, xc_val catch_func, xc_val final
                 
                 /* 确保结果不为NULL，如果是NULL则创建一个默认值 */
                 if (result == NULL) {
-                    result = xc.new(XC_TYPE_STRING, "Caught");
+                    result = rt->new(XC_TYPE_STRING, "Caught");
                 }
             } else {
                 /* catch中抛出了异常 */
@@ -609,7 +628,7 @@ static xc_val try_catch_finally(xc_val try_func, xc_val catch_func, xc_val final
     }
     
     /* 执行finally块 */
-    if (finally_func && xc.is(finally_func, XC_TYPE_FUNC)) {
+    if (finally_func && rt->is(finally_func, XC_TYPE_FUNC)) {
         printf("DEBUG: 调用finally处理器\n");
         push_stack_frame("finally_handler", __FILE__, __LINE__);
         
@@ -689,7 +708,7 @@ xc_val xc_invoke(xc_val func, int argc, ...) {
     if (!func) return NULL;
     
     /* 检查类型 */
-    if (!xc.is(func, XC_TYPE_FUNC)) {
+    if (!rt->is(func, XC_TYPE_FUNC)) {
         return NULL;
     }
     
@@ -697,7 +716,7 @@ xc_val xc_invoke(xc_val func, int argc, ...) {
     const char* func_name = "<function>";
     /* 尝试通过属性获取函数名 */
     xc_val name_prop = xc_dot(func, "name");
-    if (name_prop && xc.is(name_prop, XC_TYPE_STRING)) {
+    if (name_prop && rt->is(name_prop, XC_TYPE_STRING)) {
         func_name = (const char*)name_prop;
     }
     
@@ -792,8 +811,8 @@ xc_val xc_call(xc_val obj, const char* method, ...) {
 }
 
 static xc_val catch_handler(xc_val this_obj, int argc, xc_val* argv, xc_val closure) {
-    if (argc < 1 || !argv[0] || !xc.is(argv[0], XC_TYPE_FUNC)) {
-        xc_val error = xc.new(XC_TYPE_EXCEPTION, "catch需要一个函数参数");
+    if (argc < 1 || !argv[0] || !rt->is(argv[0], XC_TYPE_FUNC)) {
+        xc_val error = rt->new(XC_TYPE_EXCEPTION, "catch需要一个函数参数");
         throw(error);
         return NULL;
     }
@@ -802,8 +821,8 @@ static xc_val catch_handler(xc_val this_obj, int argc, xc_val* argv, xc_val clos
     xc_val try_result = closure;
     
     /* 如果是错误对象，则调用catch处理器 */
-    if (xc.is(try_result, XC_TYPE_EXCEPTION)) {
-        return xc.invoke(argv[0], 1, try_result);
+    if (rt->is(try_result, XC_TYPE_EXCEPTION)) {
+        return rt->invoke(argv[0], 1, try_result);
     }
     
     /* 否则，直接返回try的结果 */
@@ -811,8 +830,8 @@ static xc_val catch_handler(xc_val this_obj, int argc, xc_val* argv, xc_val clos
 }
 
 static xc_val finally_handler(xc_val this_obj, int argc, xc_val* argv, xc_val closure) {
-    if (argc < 1 || !argv[0] || !xc.is(argv[0], XC_TYPE_FUNC)) {
-        xc_val error = xc.new(XC_TYPE_EXCEPTION, "finally需要一个函数参数");
+    if (argc < 1 || !argv[0] || !rt->is(argv[0], XC_TYPE_FUNC)) {
+        xc_val error = rt->new(XC_TYPE_EXCEPTION, "finally需要一个函数参数");
         throw(error);
         return NULL;
     }
@@ -821,15 +840,15 @@ static xc_val finally_handler(xc_val this_obj, int argc, xc_val* argv, xc_val cl
     xc_val prev_result = closure;
     
     /* 无论如何都执行finally处理器 */
-    xc_val finally_result = xc.invoke(argv[0], 0);
+    xc_val finally_result = rt->invoke(argv[0], 0);
     
     /* 忽略finally的结果，返回之前的结果 */
     return prev_result;
 }
 
 static xc_val try_handler(xc_val this_obj, int argc, xc_val* argv, xc_val closure) {
-    if (argc < 1 || !argv[0] || !xc.is(argv[0], XC_TYPE_FUNC)) {
-        xc_val error = xc.new(XC_TYPE_EXCEPTION, "try需要一个函数参数");
+    if (argc < 1 || !argv[0] || !rt->is(argv[0], XC_TYPE_FUNC)) {
+        xc_val error = rt->new(XC_TYPE_EXCEPTION, "try需要一个函数参数");
         throw(error);
         return NULL;
     }
@@ -839,7 +858,7 @@ static xc_val try_handler(xc_val this_obj, int argc, xc_val* argv, xc_val closur
     _xc_thread_state.in_try_block = true;
     
     /* 执行函数 */
-    xc_val result = xc.invoke(argv[0], 0);
+    xc_val result = rt->invoke(argv[0], 0);
     
     /* 恢复try块标志 */
     _xc_thread_state.in_try_block = old_in_try;
@@ -850,7 +869,7 @@ static xc_val try_handler(xc_val this_obj, int argc, xc_val* argv, xc_val closur
         _xc_thread_state.current_error = NULL;
         
         /* 在测试中，我们期望返回字符串类型 */
-        return xc.new(XC_TYPE_STRING, "异常已处理");
+        return rt->new(XC_TYPE_STRING, "异常已处理");
     }
     
     /* 直接返回函数结果 */
@@ -919,12 +938,12 @@ xc_val xc_new(int type, ...) {
 /* 获取错误的堆栈跟踪 */
 xc_object_t *xc_error_get_stack_trace(xc_runtime_t *rt, xc_object_t *error) {
     /* 检查参数 */
-    if (!error || !xc.is(error, XC_TYPE_EXCEPTION)) {
+    if (!error || !rt->is(error, XC_TYPE_EXCEPTION)) {
         return NULL;
     }
     
     /* 创建一个数组来存储堆栈帧信息 */
-    xc_val stack_array = xc.new(XC_TYPE_ARRAY, 0);
+    xc_val stack_array = rt->new(XC_TYPE_ARRAY, 0);
     if (!stack_array) {
         return NULL;
     }
@@ -940,7 +959,7 @@ xc_object_t *xc_error_get_stack_trace(xc_runtime_t *rt, xc_object_t *error) {
                  frame->line_number);
         
         /* 创建字符串对象并添加到数组 */
-        xc_val frame_str = xc.new(XC_TYPE_STRING, frame_info);
+        xc_val frame_str = rt->new(XC_TYPE_STRING, frame_info);
         if (frame_str) {
             /* 调用数组的push方法添加元素 */
             xc_val args[1] = {frame_str};
@@ -955,73 +974,6 @@ xc_object_t *xc_error_get_stack_trace(xc_runtime_t *rt, xc_object_t *error) {
     return (xc_object_t *)stack_array;
 }
 
-/* use GCC FEATURE */
-void __attribute__((constructor)) xc_auto_init(void) {
-    XC_LOG_DEBUG("xc_auto_init()");
-    xc_gc_init_auto(&xc, NULL);//@see xc_gc.c
-    
-    // 初始化方法缓存
-    init_method_cache();
-
-    xc_register_string_type(&xc);
-    xc_register_boolean_type(&xc);
-    xc_register_number_type(&xc);
-    xc_register_array_type(&xc);
-    xc_register_object_type(&xc);
-    xc_register_function_type(&xc);
-    xc_register_error_type(&xc);
-}
-
-void __attribute__((destructor)) xc_auto_shutdown(void) {
-    XC_LOG_DEBUG("xc_auto_shutdown()");
-    
-    // 清理方法缓存
-    clear_method_cache();
-    
-    xc_gc();
-    xc_gc_shutdown(&xc);
-}
-
-// 添加强制引用以确保构造函数编译时被保留
-XC_REQUIRES(xc_auto_init);
-XC_REQUIRES(xc_auto_shutdown);
-
-/* 全局类型注册表 */
-xc_type_registry_t type_registry = {0};
-
-/* 内置类型处理器 */
-xc_type_lifecycle_t *xc_null_type = NULL;
-xc_type_lifecycle_t *xc_boolean_type = NULL;
-xc_type_lifecycle_t *xc_number_type = NULL;
-xc_type_lifecycle_t *xc_string_type = NULL;
-xc_type_lifecycle_t *xc_array_type = NULL;
-xc_type_lifecycle_t *xc_object_type = NULL;
-xc_type_lifecycle_t *xc_function_type = NULL;
-xc_type_lifecycle_t *xc_error_type = NULL;
-
-// xc_object_t xc_gc_alloc(xc_runtime_t *rt, size_t size, int type_id);
-/* 全局运行时对象 */
-xc_runtime_t xc = {
-    // .alloc_object = xc_gc_alloc,
-    .type_of = xc_typeof,
-    .is = xc_is,
-    .register_type = xc_register_type,
-    .get_type_id = get_type_id,
-    
-    .register_method = register_method,
-    .new = xc_new,
-    // .delete = xc_delete,
-    .call = xc_call,
-    .dot = xc_dot,
-    .invoke = xc_invoke,
-    
-    .try_catch_finally = try_catch_finally,
-    .throw = throw,
-    .throw_with_rethrow = throw_with_rethrow,
-    .set_uncaught_exception_handler = set_uncaught_exception_handler,
-    .get_current_error = get_current_error,
-    .clear_error = clear_error,
-};
 
 /* 添加栈帧 */
 static void push_stack_frame(const char* func_name, const char* file_name, int line_number) {
@@ -1142,7 +1094,7 @@ xc_val xc_function_invoke(xc_val func, xc_val this_obj, int argc, xc_val* argv) 
     }
     
     /* 检查函数类型 */
-    if (!xc.is(func, XC_TYPE_FUNC)) {
+    if (!rt->is(func, XC_TYPE_FUNC)) {
         printf("DEBUG: xc_function_invoke 失败，func 不是函数类型，类型=%d\n", xc_typeof(func));
         return NULL;
     }
@@ -1157,8 +1109,92 @@ xc_val xc_function_invoke(xc_val func, xc_val this_obj, int argc, xc_val* argv) 
     }
     
     /* 准备参数 */
-    xc_val result = function->handler(&xc, this_obj, argc, argv);
+    xc_val result = function->handler(rt, this_obj, argc, argv);
     
     /* 返回结果 */
     return result;
 }
+
+
+
+void __attribute__((destructor)) xc_auto_shutdown(void) {
+    XC_LOG_DEBUG("xc_auto_shutdown()");
+    
+    // 清理方法缓存
+    clear_method_cache();
+    
+    xc_gc();
+    xc_gc_shutdown(rt);
+}
+
+/* 全局类型注册表 */
+xc_type_registry_t type_registry = {0};
+
+/* 内置类型处理器 */
+xc_type_lifecycle_t *xc_null_type = NULL;
+xc_type_lifecycle_t *xc_boolean_type = NULL;
+xc_type_lifecycle_t *xc_number_type = NULL;
+xc_type_lifecycle_t *xc_string_type = NULL;
+xc_type_lifecycle_t *xc_array_type = NULL;
+xc_type_lifecycle_t *xc_object_type = NULL;
+xc_type_lifecycle_t *xc_function_type = NULL;
+xc_type_lifecycle_t *xc_error_type = NULL;
+
+/* 全局运行时对象 */
+xc_runtime_t xc = {
+    .type_of = xc_typeof,
+    .is = xc_is,
+    .register_type = xc_register_type,
+    .get_type_id = get_type_id,
+    
+    .register_method = register_method,
+    .new = xc_new,
+    .alloc = xc_alloc,
+    .get_type_value = get_type_value,
+    .convert_type = convert_type,
+    // .delete = xc_delete,
+    .call = xc_call,
+    .dot = xc_dot,
+    .invoke = xc_invoke,
+    
+    .try_catch_finally = try_catch_finally,
+    .throw = throw,
+    .throw_with_rethrow = throw_with_rethrow,
+    .set_uncaught_exception_handler = set_uncaught_exception_handler,
+    .get_current_error = get_current_error,
+    .clear_error = clear_error,
+};
+
+
+
+/* use GCC FEATURE */
+xc_runtime_t* __attribute__((constructor)) xc_init(void) {
+    if (rt) return rt;//@ref xc_singleton()
+    XC_LOG_DEBUG("xc_init()");
+rt = &xc;
+    xc_gc_init_auto(rt, NULL);//@see xc_gc.c
+    
+    // 初始化方法缓存
+    init_method_cache();
+
+    xc_register_string_type(rt);
+    xc_register_boolean_type(rt);
+    xc_register_number_type(rt);
+    xc_register_array_type(rt);
+    xc_register_object_type(rt);
+    xc_register_function_type(rt);
+    xc_register_error_type(rt);
+    return rt;
+}
+
+xc_runtime_t* xc_singleton(void) {
+    if (!rt) {
+        rt = xc_init();
+    }
+    return rt;
+}
+
+
+// 添加强制引用以确保构造函数编译时被保留
+XC_REQUIRES(xc_init);
+XC_REQUIRES(xc_auto_shutdown);
