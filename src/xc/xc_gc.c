@@ -351,19 +351,6 @@ void xc_gc_add_ref(xc_runtime_t *rt, xc_object_t *obj) {
     // obj->ref_count++;
 }
 
-/* Release a reference to an object */
-void xc_gc_release(xc_runtime_t *rt, xc_object_t *obj) {
-    printf("TODO deprecated xc_gc_release?\n");
-    // if (!obj) return;
-    
-    // obj->ref_count--;
-    
-    // /* If reference count reaches zero, free the object */
-    // if (obj->ref_count <= 0) {
-    //     xc_gc_free(rt, obj);
-    // }
-}
-
 // /* Get the reference count of an object */
 // int xc_gc_get_ref_count(xc_runtime_t *rt, xc_object_t *obj) {
 //     printf("TODO deprecated xc_gc_get_ref_count?\n");

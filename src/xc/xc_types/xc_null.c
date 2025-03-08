@@ -2,7 +2,7 @@
 #include "../xc_internal.h"
 
 /* Forward declarations */
-static void null_mark(xc_runtime_t *rt, xc_object_t *obj);
+// static void null_mark(xc_runtime_t *rt, xc_object_t *obj, void (*mark_func)(xc_val));
 static void null_free(xc_runtime_t *rt, xc_object_t *obj);
 static bool null_equal(xc_runtime_t *rt, xc_object_t *a, xc_object_t *b);
 static int null_compare(xc_runtime_t *rt, xc_object_t *a, xc_object_t *b);
@@ -17,7 +17,7 @@ typedef struct {
 static xc_object_t *null_singleton = NULL;
 
 /* Null methods */
-static void null_mark(xc_runtime_t *rt, xc_object_t *obj) {
+static void null_mark(xc_object_t *obj, mark_func mark) {
     /* Null doesn't have references to other objects */
 }
 
@@ -43,7 +43,7 @@ static xc_type_lifecycle_t null_type = {
     .cleaner = NULL,
     .creator = null_creator,
     .destroyer = (xc_destroy_func)null_free,
-    .marker = (xc_marker_func)null_mark,
+    .marker = null_mark,
     // .allocator = NULL,
     .name = "null",
     .equal = (bool (*)(xc_val, xc_val))null_equal,

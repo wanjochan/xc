@@ -43,7 +43,15 @@
 #define XC_TYPE_EXTENSION_END   255
 
 /* 胖指针 值类型 */
-typedef void* xc_val;//内部可能指向 xc_object_t
+typedef struct xc_object {
+    size_t size;              /* Total size of the object in bytes */
+    int type_id;//XC_TYPE_*
+    // int ref_count;            /* Reference count for manual memory management */
+    int gc_color;             /* GC mark color (white, gray, black, permanent) */
+    struct xc_object *gc_next; /* Next object in the GC list */
+    /* Object data follows this header */
+} xc_object_t;
+typedef xc_object_t* xc_val;
 
 typedef struct xc_runtime_t xc_runtime_t;
 
@@ -64,7 +72,9 @@ GC 提供一个回调函数（mark_func），类型实现使用它标记子对�
 扩展性：添加新类型只需实现正确的 marker 函数，不需要修改 GC
 灵活性：GC 算法可以改变而不影响类型实现
 */
-typedef void (*xc_marker_func)(xc_val obj, void (*mark_func)(xc_val));
+
+typedef void (*mark_func)(xc_val);
+typedef void (*xc_marker_func)(xc_val, mark_func);
 typedef xc_val (*xc_allocator_func)(size_t size);
 typedef xc_val (*xc_method_func)(xc_val self, xc_val arg);
 
@@ -84,12 +94,30 @@ typedef struct {
 } xc_type_lifecycle_t;
 
 /* 运行时接口结构 */
+// x = null; 类似于将变量设为 null 值或 undefined
+// delete obj.prop; 类似于我们讨论的 xc_delete() 操作
 typedef struct xc_runtime_t {
-
+/*
+下一步建议
+既然清理旧代码解决了问题，我建议：
+完成清理工作：
+彻底检查并移除所有引用计数相关代码
+确保所有类型实现都使用纯 GC 方式
+更新文档：
+明确说明系统现在使用纯 GC 内存管理
+更新开发指南，说明如何正确管理对象引用
+优化 GC 性能：
+现在可以专注于优化 GC 算法
+考虑增加增量 GC 或并发 GC 功能
+添加新功能：
+实现我们讨论的 delete() API
+考虑添加弱引用支持
+可能的话添加终结器（finalizer）机制
+*/
     //xc_val (*alloc)(int type, ...);//TODO link gc_alloc
 
     xc_val (*new)(int type, ...);//TODO add flags for "const"
-    //TODO delete(xc_val);//TODO alike release 
+   //xc_val (*delete)(xc_val);//xc_delete
 
     int (*type_of)(xc_val obj); //"typeof"是c 语言保留字不能用
     int (*is)(xc_val obj, int type);
@@ -97,7 +125,6 @@ typedef struct xc_runtime_t {
     int (*register_type)(const char* name, xc_type_lifecycle_t* lifecycle);
     int (*get_type_id)(const char* name);
     //TODO 可以考虑加一个 get_type_by_id()=>xc_type_lifecycle_t* 
-    //NOTES: 不过目前内部写死也行，因为只有几个固定的type?
     
     //runtime, calling stack
     char (*register_method)(int type, const char* func_name, xc_method_func native_func);

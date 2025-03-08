@@ -89,14 +89,14 @@ typedef xc_val (*xc_function_ptr_t)(xc_runtime_t *rt, xc_val this_obj, int argc,
  * Basic object structure for all XC objects
  * This is the common header for all objects managed by the GC
  */
-typedef struct xc_object {
-    size_t size;              /* Total size of the object in bytes */
-    int type_id;              /* 类型ID，直接使用XC_TYPE_*常量 */
-    int ref_count;            /* Reference count for manual memory management */
-    int gc_color;             /* GC mark color (white, gray, black, permanent) */
-    struct xc_object *gc_next; /* Next object in the GC list */
-    /* Object data follows this header */
-} xc_object_t;
+// typedef struct xc_object {
+//     size_t size;              /* Total size of the object in bytes */
+//     int type_id;              /* 类型ID，直接使用XC_TYPE_*常量 */
+//     // int ref_count;            /* Reference count for manual memory management */
+//     int gc_color;             /* GC mark color (white, gray, black, permanent) */
+//     struct xc_object *gc_next; /* Next object in the GC list */
+//     /* Object data follows this header */
+// } xc_object_t;
 
 /* Type flags */
 #define XC_TYPE_PRIMITIVE  0x0001  /* Primitive type (number, string, etc) */

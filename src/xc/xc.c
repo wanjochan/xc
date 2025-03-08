@@ -366,7 +366,8 @@ xc_val xc_dot(xc_val obj, const char* key, ...) {
     }
     
     if (methods[1]) {
-        return methods[1];  // 返回方法函数本身，以便后续调用
+        // return methods[1];  // 返回方法函数本身，以便后续调用
+        return xc.new(XC_TYPE_FUNC, method_names[1], methods[1]);
     }
     
     if (methods[2]) {
@@ -862,6 +863,34 @@ static xc_val try_func(xc_val func) {
     return try_handler(NULL, 1, args, NULL);
 }
 
+
+// /* Release a reference to an object */
+// xc_val xc_delete(xc_runtime_t *rt, xc_object_t *obj) {
+//     //fwd to xc_gc_free? xc_gc_release??
+//     if (!obj) return NULL;
+    
+//     // 不再减少引用计数或释放对象
+//     // 而是可能执行以下操作：
+    
+//     // 1. 记录解除引用事件（可选，用于调试）
+//     // if (rt->gc_debug_enabled) {
+//     //     printf("Reference released to object %p of type %d\n", 
+//     //            (void*)obj, obj->type_id);
+//     // }
+    
+//     // // 2. 可能触发 GC（如果解除引用次数达到阈值）
+//     // rt->gc_release_count++;
+//     // if (rt->gc_release_count >= rt->gc_release_threshold) {
+//     //     rt->gc_release_count = 0;
+//     //     // 可选：触发 GC
+//     //     // xc_gc_run(rt);
+//     // }
+    
+//     // 3. 对于特殊资源，可能需要特殊处理
+//     // 例如，如果对象持有外部资源，可能需要通知资源管理器
+//     return NULL;//return boolean true?
+// }
+
 xc_val xc_new(int type, ...) {
     if (type < 0 || type >= 16) {
         char error_msg[128];
@@ -981,6 +1010,7 @@ xc_runtime_t xc = {
     
     .register_method = register_method,
     .new = xc_new,
+    // .delete = xc_delete,
     .call = xc_call,
     .dot = xc_dot,
     .invoke = xc_invoke,

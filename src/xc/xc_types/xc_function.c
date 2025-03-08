@@ -151,7 +151,8 @@ xc_object_t *xc_function_call(xc_runtime_t *rt, xc_object_t *func, xc_object_t *
     
     if (function->handler) {
         /* 类型转换以匹配函数签名 */
-        return function->handler(rt, this_obj, argc, (void **)argv);
+        //return function->handler(rt, this_obj, argc, (xc_object_t **)argv);//same...
+        return function->handler(rt, this_obj, argc, (xc_val*)argv);
     }
     
     return NULL;
