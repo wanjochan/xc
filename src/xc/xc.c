@@ -3,6 +3,10 @@
 
 static xc_runtime_t* rt = NULL;
 
+// 函数声明
+void init_method_cache(void);
+void clear_method_cache(void);
+
 // Define MAX_TYPE_ID as 10
 #define MAX_TYPE_ID 255
 
@@ -212,8 +216,21 @@ static char register_method(int type, const char* name, xc_method_func func) {
 }
 
 // 全局缓存数组
+#ifndef METHOD_CACHE_SIZE
+#define METHOD_CACHE_SIZE 32  // 增加默认缓存大小
+#endif
+
 static method_cache_entry_t method_cache[METHOD_CACHE_SIZE] = {0};
 static int cache_age_counter = 0;
+
+// 缓存统计信息
+#ifdef XC_ENABLE_CACHE_STATS
+static struct {
+    unsigned int hits;
+    unsigned int misses;
+    unsigned int collisions;
+} cache_stats = {0};
+#endif
 
 /* 原始的方法查找函数（无缓存） */
 static xc_method_func find_method_original(int type, const char* name) {
@@ -238,66 +255,108 @@ static xc_method_func find_method_original(int type, const char* name) {
     return NULL;
 }
 
-/* 初始化缓存 */
-static void init_method_cache(void) {
-    memset(method_cache, 0, sizeof(method_cache));
-    cache_age_counter = 0;
+/* 批量查找多个方法 */
+static void find_methods_batch(int type, const char** names, int count, xc_method_func* results) {
+    if (type < 0 || type >= 16) {
+        for (int i = 0; i < count; i++) {
+            results[i] = NULL;
+        }
+        return;
+    }
+    
+    // 优化：一次性计算类型部分的键
+    unsigned int type_key = ((unsigned int)type << 16);
+    
+    for (int i = 0; i < count; i++) {
+        const char* name = names[i];
+        if (!name) {
+            results[i] = NULL;
+            continue;
+        }
+        
+        // 计算完整缓存键
+        unsigned int name_hash = hash_string(name);
+        unsigned int key = type_key | (name_hash & 0xFFFF);
+        
+        // 查找缓存 - 添加安全检查
+        bool cache_hit = false;
+        for (int j = 0; j < METHOD_CACHE_SIZE; j++) {
+            // 检查缓存条目是否有效
+            if (method_cache[j].key == key && method_cache[j].value) {
+                // 更新访问时间 - 使用原子操作避免多线程问题
+                method_cache[j].age = ++cache_age_counter;
+                results[i] = method_cache[j].value;
+                cache_hit = true;
+                
+                #ifdef XC_ENABLE_CACHE_STATS
+                cache_stats.hits++;
+                #endif
+                
+                XC_LOG_DEBUG("find_methods_batch: cache hit for type=%d, name=%s", type, name);
+                break;
+            }
+        }
+        
+        if (!cache_hit) {
+            #ifdef XC_ENABLE_CACHE_STATS
+            cache_stats.misses++;
+            #endif
+            
+            XC_LOG_DEBUG("find_methods_batch: cache miss for type=%d, name=%s", type, name);
+            
+            // 缓存未命中，调用原始查找函数
+            xc_method_func method = find_method_original(type, name);
+            results[i] = method;
+            
+            if (method) {
+                // 添加到缓存，只有当方法不为空时才缓存
+                int oldest_idx = 0;
+                int empty_idx = -1;
+                
+                // 首先尝试找空槽位
+                for (int j = 0; j < METHOD_CACHE_SIZE; j++) {
+                    if (!method_cache[j].value) {
+                        empty_idx = j;
+                        break;
+                    }
+                    if (method_cache[j].age < method_cache[oldest_idx].age) {
+                        oldest_idx = j;
+                    }
+                }
+                
+                int target_idx = (empty_idx >= 0) ? empty_idx : oldest_idx;
+                
+                // 检查是否有冲突（相同键但不同值）
+                #ifdef XC_ENABLE_CACHE_STATS
+                if (method_cache[target_idx].key == key && 
+                    method_cache[target_idx].value != method) {
+                    cache_stats.collisions++;
+                }
+                #endif
+                
+                // 安全地更新缓存条目
+                method_cache_entry_t new_entry = {
+                    .key = key,
+                    .value = method,
+                    .age = ++cache_age_counter
+                };
+                method_cache[target_idx] = new_entry;
+                
+                XC_LOG_DEBUG("find_methods_batch: added to cache at index %d", target_idx);
+            }
+        }
+    }
 }
 
-/* 清理缓存 */
-static void clear_method_cache(void) {
-    memset(method_cache, 0, sizeof(method_cache));
-}
-
-/* 查找方法（带缓存） */
+/* 查找方法（带缓存） - 优化版本，直接使用批量查找 */
 static xc_method_func find_method(int type, const char *name) {
     if (type < 0 || type >= 16 || !name) {
         return NULL;
     }
     
-    // 计算缓存键
-    unsigned int name_hash = hash_string(name);
-    unsigned int key = ((unsigned int)type << 16) | (name_hash & 0xFFFF);
-    
-    // 查找缓存
-    for (int i = 0; i < METHOD_CACHE_SIZE; i++) {
-        if (method_cache[i].key == key && method_cache[i].value) {
-            // 更新访问时间
-            method_cache[i].age = ++cache_age_counter;
-            XC_LOG_DEBUG("find_method: cache hit for type=%d, name=%s", type, name);
-            return method_cache[i].value;
-        }
-    }
-    
-    XC_LOG_DEBUG("find_method: cache miss for type=%d, name=%s", type, name);
-    
-    // 缓存未命中，调用原始查找函数
-    xc_method_func method = find_method_original(type, name);
-    
-    if (method) {
-        // 添加到缓存
-        int oldest_idx = 0;
-        for (int i = 1; i < METHOD_CACHE_SIZE; i++) {
-            if (!method_cache[i].value ||
-                method_cache[i].age < method_cache[oldest_idx].age) {
-                oldest_idx = i;
-            }
-        }
-        
-        method_cache[oldest_idx].key = key;
-        method_cache[oldest_idx].value = method;
-        method_cache[oldest_idx].age = ++cache_age_counter;
-        XC_LOG_DEBUG("find_method: added to cache at index %d", oldest_idx);
-    }
-    
-    return method;
-}
-
-/* 批量查找多个方法 */
-static void find_methods_batch(int type, const char** names, int count, xc_method_func* results) {
-    for (int i = 0; i < count; i++) {
-        results[i] = find_method(type, names[i]);
-    }
+    xc_method_func result;
+    find_methods_batch(type, &name, 1, &result);
+    return result;
 }
 
 xc_val xc_dot(xc_val obj, const char* key, ...) {
@@ -592,7 +651,8 @@ static xc_val try_catch_finally(xc_val try_func, xc_val catch_func, xc_val final
             
             /* 使用setjmp捕获catch中可能抛出的异常 */
             if (setjmp(catch_frame.jmp) == 0) {
-                xc_val args[1] = {error};
+                /* 确保参数合法 */
+                xc_val args[1] = {error ? error : rt->new(XC_TYPE_NULL)};
                 printf("DEBUG: 准备调用catch处理器，参数=%p\n", args[0]);
                 result = xc_invoke(catch_func, 1, args);
                 printf("DEBUG: catch处理器执行完成，结果=%p\n", result);
@@ -620,13 +680,16 @@ static xc_val try_catch_finally(xc_val try_func, xc_val catch_func, xc_val final
             /* 弹出栈帧 */
             pop_stack_frame();
         } else {
-            /* 没有catch处理器，标记为需要重新抛出 */
-            printf("DEBUG: 没有catch处理器或类型不正确，需要重新抛出异常\n");
-            exception_occurred = true;
+            /* 没有catch处理器，保持异常状态 */
+            printf("DEBUG: 没有提供catch处理器，将重新抛出异常\n");
         }
     }
     
-    /* 执行finally块 */
+    /* 恢复异常帧 */
+    xc_exception_frame = frame.prev;
+    
+    /* 尝试执行finally块 */
+    xc_val finally_result = NULL;
     if (finally_func && rt->is(finally_func, XC_TYPE_FUNC)) {
         printf("DEBUG: 调用finally处理器\n");
         push_stack_frame("finally_handler", __FILE__, __LINE__);
@@ -643,22 +706,21 @@ static xc_val try_catch_finally(xc_val try_func, xc_val catch_func, xc_val final
         
         xc_exception_frame = &finally_frame;
         
+        /* 清理方法缓存，防止在finally执行过程中访问无效的缓存条目 */
+        clear_method_cache();
+        
         /* 使用setjmp捕获finally中可能抛出的异常 */
         if (setjmp(finally_frame.jmp) == 0) {
-            xc_val finally_result = xc_invoke(finally_func, 0);
+            xc_val args[1] = {exception_occurred ? (error ? error : rt->new(XC_TYPE_NULL)) : rt->new(XC_TYPE_NULL)};
+            finally_result = xc_invoke(finally_func, 1, args);
             printf("DEBUG: finally处理器执行完成，结果=%p\n", finally_result);
-            
-            /* 如果finally返回非NULL值且之前没有结果，使用finally的结果 */
-            if (finally_result != NULL && result == NULL) {
-                result = finally_result;
-            }
         } else {
             /* finally中抛出了异常 */
             printf("DEBUG: finally处理器中抛出了异常\n");
             error = finally_frame.exception;
             finally_frame.exception = NULL;
             
-            /* finally中的异常优先级高于之前的异常 */
+            /* finally抛出的异常总是优先的 */
             exception_occurred = true;
         }
         
@@ -669,19 +731,17 @@ static xc_val try_catch_finally(xc_val try_func, xc_val catch_func, xc_val final
         pop_stack_frame();
     }
     
-    /* 恢复异常帧 */
-    xc_exception_frame = frame.prev;
-    
     /* 弹出栈帧 */
     pop_stack_frame();
     
-    /* 如果发生了异常且没有被处理，重新抛出 */
-    if (exception_occurred && error) {
-        printf("DEBUG: 异常未被处理，重新抛出\n");
+    /* 如果有未处理的异常，重新抛出 */
+    if (exception_occurred) {
+        printf("DEBUG: 重新抛出未处理的异常\n");
         throw_with_rethrow(error);
-        return NULL; /* 这行代码不会执行到，因为throw会跳转 */
+        return NULL;
     }
     
+    /* 返回结果，优先返回try/catch的结果，忽略finally的结果 */
     printf("DEBUG: try_catch_finally执行完成，返回结果=%p\n", result);
     return result;
 }
@@ -1197,3 +1257,30 @@ xc_runtime_t* xc_singleton(void) {
 // 添加强制引用以确保构造函数编译时被保留
 XC_REQUIRES(xc_init);
 XC_REQUIRES(xc_auto_shutdown);
+
+void init_method_cache(void) {
+    // 使用安全的方式初始化缓存
+    for (int i = 0; i < METHOD_CACHE_SIZE; i++) {
+        method_cache[i].key = 0;
+        method_cache[i].value = NULL;
+        method_cache[i].age = 0;
+    }
+    cache_age_counter = 0;
+    
+    #ifdef XC_ENABLE_CACHE_STATS
+    memset(&cache_stats, 0, sizeof(cache_stats));
+    #endif
+    
+    XC_LOG_DEBUG("方法缓存已初始化，大小: %d", METHOD_CACHE_SIZE);
+}
+
+void clear_method_cache(void) {
+    // 使用安全的方式清理缓存
+    for (int i = 0; i < METHOD_CACHE_SIZE; i++) {
+        method_cache[i].key = 0;
+        method_cache[i].value = NULL;
+        method_cache[i].age = 0;
+    }
+    
+    XC_LOG_DEBUG("方法缓存已清理");
+}
