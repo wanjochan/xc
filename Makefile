@@ -27,6 +27,9 @@ INCLUDES := -I$(SRC_DIR) -I$(SRC_DIR)/infrax -I$(INCLUDE_DIR) -I~/cosmocc/includ
 LDFLAGS := -static -Wl,--gc-sections -Wl,--build-id=none
 #LDFLAGS := -static -Wl,--whole-archive -lxc -Wl,--no-whole-archive
 
+# 自动检测CPU核心数
+CPUS := $(shell if [ "$(shell uname)" = "Darwin" ]; then sysctl -n hw.ncpu; else nproc; fi)
+
 # 默认目标
 .PHONY: all
 all: libxc test
@@ -39,8 +42,8 @@ dirs:
 # 构建libxc.a
 .PHONY: libxc
 libxc: dirs
-	@echo "构建libxc.a..."
-	@bash $(SCRIPTS_DIR)/build_libxc.sh
+	@echo "构建libxc.a (使用$(CPUS)个核心)..."
+	@bash $(SCRIPTS_DIR)/build_libxc.sh $(CPUS)
 
 # 构建并运行测试
 .PHONY: test
@@ -48,15 +51,15 @@ test: test-internal test-external
 
 # 构建并运行内部测试
 .PHONY: test-internal
-test-internal: dirs libxc
+test-internal: libxc
 	@echo "构建并运行内部测试..."
-	@bash $(SCRIPTS_DIR)/run_internal_tests.sh
+	@MAKE_JOBS=$(CPUS) bash $(SCRIPTS_DIR)/run_internal_tests.sh
 
 # 构建并运行外部测试
 .PHONY: test-external
-test-external: dirs libxc
+test-external: libxc
 	@echo "构建并运行外部测试..."
-	@bash $(SCRIPTS_DIR)/run_external_tests.sh
+	@MAKE_JOBS=$(CPUS) bash $(SCRIPTS_DIR)/run_external_tests.sh
 
 # 清理构建产物
 .PHONY: clean

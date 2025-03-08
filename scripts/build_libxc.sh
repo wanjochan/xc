@@ -27,6 +27,21 @@ mkdir -p "${LIB_DIR}"
 mkdir -p "${INCLUDE_DIR}"
 mkdir -p "${TMP_DIR}"
 
+# 获取CPU核心数以确定并行编译数量
+# 如果传入了参数，使用参数值作为并行任务数
+if [ $# -gt 0 ] && [ "$1" -eq "$1" ] 2>/dev/null; then
+    PARALLEL_JOBS=$1
+else
+    # 否则自动检测
+    if [[ "$(uname)" == "Darwin" ]]; then
+        PARALLEL_JOBS=$(sysctl -n hw.ncpu)
+    else
+        PARALLEL_JOBS=$(nproc 2>/dev/null || echo 4)
+    fi
+fi
+
+echo "检测到 ${PARALLEL_JOBS} 个CPU核心，将使用并行编译"
+
 # 创建一个临时的完整头文件
 echo "生成完整的展开头文件 libxc.h..."
 
@@ -43,11 +58,8 @@ EOF
 # 将 xc.h 中的内容添加到 libxc.h 中，但排除 #include 语句和头文件保护宏
 sed -n '/^#ifndef/,/^#include/d; /^#include/d; /^#endif/d; p' "${SRC_DIR}/xc/xc.h" >> "${INCLUDE_DIR}/libxc.h"
 
-
 # 添加结尾保护宏
 echo -e "\n#endif /* LIBXC_H */" >> "${INCLUDE_DIR}/libxc.h"
-
-
 
 # 编译XC源文件
 echo "编译XC源文件..."
@@ -81,12 +93,51 @@ SOURCE_FILES=(
     "${SRC_DIR}/xc/xc_std/xc_std_math.c"
 )
 
-# 编译所有源文件为目标文件
+# 直接使用 make 的方式编译各个源文件
+echo "开始并行编译..."
+
+# 创建一个临时的 Makefile
+TEMP_MAKEFILE=$(mktemp)
+cat > "${TEMP_MAKEFILE}" << EOF
+.PHONY: all clean
+
+CFLAGS=${CFLAGS}
+CC=${COSMOCC}
+
+OBJS =
+EOF
+
+# 添加规则到临时 Makefile
+for src in "${SOURCE_FILES[@]}"; do
+    obj="${src%.c}.o"
+    echo "OBJS += ${obj}" >> "${TEMP_MAKEFILE}"
+    echo "" >> "${TEMP_MAKEFILE}"
+    echo "${obj}: ${src}" >> "${TEMP_MAKEFILE}"
+    echo "	@echo 编译 \$<..." >> "${TEMP_MAKEFILE}"
+    echo "	@\$(CC) \$(CFLAGS) -c \$< -o \$@" >> "${TEMP_MAKEFILE}"
+    echo "	@echo 完成 \$<" >> "${TEMP_MAKEFILE}"
+    echo "" >> "${TEMP_MAKEFILE}"
+done
+
+# 添加全局目标
+cat >> "${TEMP_MAKEFILE}" << EOF
+all: \$(OBJS)
+
+clean:
+	rm -f \$(OBJS)
+EOF
+
+# 使用 make 的并行编译功能
+echo "使用 make -j${PARALLEL_JOBS} 进行并行编译..."
+make -j${PARALLEL_JOBS} -f "${TEMP_MAKEFILE}" all
+
+# 清理临时文件
+rm "${TEMP_MAKEFILE}"
+
+# 收集所有目标文件
 OBJECT_FILES=()
 for src in "${SOURCE_FILES[@]}"; do
     obj="${src%.c}.o"
-    echo "编译 ${src}..."
-    "${COSMOCC}" ${CFLAGS} -c "${src}" -o "${obj}"
     OBJECT_FILES+=("${obj}")
 done
 
