@@ -35,6 +35,7 @@ XC是一个非常小的中层次C运行时库，具有类型系统和自动垃�
 ## 构建系统
 
 本项目使用Makefile和自定义构建脚本来管理构建过程。编译器使用cosmocc-4.0.2。
+If `cosmocc` is not installed, the build scripts fall back to the compiler specified in the `COSMOCC` environment variable (default: cc).
 
 ### 主要构建目标
 
@@ -78,4 +79,4 @@ cosmopolitan => infrax层 => xc运行时 => libxc.a + libxc.h
    ```bash
    cosmocc -I/path/to/xc/include your_file.c -L/path/to/xc/lib -lxc -o your_program
    ```
-ext c high level var sys lib
+If `cosmocc` is unavailable, set the `COSMOCC` environment variable to your C compiler (e.g., gcc) before running make.

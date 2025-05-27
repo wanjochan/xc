@@ -17,11 +17,11 @@ BIN_DIR="${PROJECT_ROOT}/bin"
 TEST_DIR="${PROJECT_ROOT}/test"
 INTERNAL_TEST_DIR="${TEST_DIR}/internal"
 
-# 设置编译器
-COSMOCC=~/cosmocc/bin/cosmocc
+# 设置编译器，可通过环境变量覆盖
+COSMOCC="${COSMOCC:-$(command -v cosmocc 2>/dev/null || command -v cc)}"
 
 # 设置编译选项
-CFLAGS="-Os -g -I${SRC_DIR} -I${SRC_DIR}/infrax -I${INCLUDE_DIR} -I${INTERNAL_TEST_DIR} -I~/cosmocc/include"
+CFLAGS="-Os -g -I${SRC_DIR} -I${SRC_DIR}/infrax -I${INCLUDE_DIR} -I${INTERNAL_TEST_DIR}"
 
 # 创建输出目录（如果不存在）
 mkdir -p "${BIN_DIR}"
@@ -69,4 +69,4 @@ ls -la "${BIN_DIR}/test_internal.exe"
 echo -e "\nrun_internal_tests.sh: 运行内部测试程序: ${BIN_DIR}/test_internal.exe\n"
 "${BIN_DIR}/test_internal.exe"
 
-echo -e "\nrun_internal_tests.sh: 内部测试结束!" 
+echo -e "\nrun_internal_tests.sh: 内部测试结束!"

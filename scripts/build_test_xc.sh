@@ -15,11 +15,11 @@ BIN_DIR="${PROJECT_ROOT}/bin"
 TEST_DIR="${PROJECT_ROOT}/test"
 LIB_DIR="${PROJECT_ROOT}/lib"
 
-# 设置编译器
-COSMOCC="${PROJECT_ROOT}/../Downloads/cosmocc-4.0.2/bin/cosmocc"
+# 设置编译器，可通过环境变量覆盖
+COSMOCC="${COSMOCC:-$(command -v cosmocc 2>/dev/null || command -v cc)}"
 
 # 设置编译选项
-CFLAGS="-Os -fomit-frame-pointer -fno-pie -fno-pic -fno-common -fno-plt -mcmodel=large -finline-functions -I${PROJECT_ROOT}/src -I${PROJECT_ROOT}/src/infrax -I${PROJECT_ROOT}/include -I${SRC_DIR} -I${PROJECT_ROOT}/../Downloads/cosmocc-4.0.2/include"
+CFLAGS="-Os -fomit-frame-pointer -fno-pie -fno-pic -fno-common -fno-plt -mcmodel=large -finline-functions -I${PROJECT_ROOT}/src -I${PROJECT_ROOT}/src/infrax -I${PROJECT_ROOT}/include -I${SRC_DIR}"
 LDFLAGS="-static -Wl,--gc-sections -Wl,--build-id=none -L${LIB_DIR} -lxc"
 
 # 创建bin目录（如果不存在）

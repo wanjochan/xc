@@ -16,11 +16,11 @@ BIN_DIR="${PROJECT_ROOT}/bin"
 TEST_DIR="${PROJECT_ROOT}/test"
 EXTERNAL_TEST_DIR="${TEST_DIR}/external"
 
-# 设置编译器
-COSMOCC=~/cosmocc/bin/cosmocc
+# 设置编译器，可通过环境变量覆盖
+COSMOCC="${COSMOCC:-$(command -v cosmocc 2>/dev/null || command -v cc)}"
 
 # 设置编译选项 - 注意这里只包含公共头文件目录
-CFLAGS="-Os -g -I${INCLUDE_DIR} -I${EXTERNAL_TEST_DIR} -I~/cosmocc/include"
+CFLAGS="-Os -g -I${INCLUDE_DIR} -I${EXTERNAL_TEST_DIR}"
 
 # 创建输出目录（如果不存在）
 mkdir -p "${BIN_DIR}"
@@ -71,4 +71,4 @@ ls -la "${BIN_DIR}/test_external.exe"
 echo -e "\nrun_external_tests.sh: 运行外部测试程序: ${BIN_DIR}/test_external.exe\n"
 "${BIN_DIR}/test_external.exe"
 
-echo -e "\nrun_external_tests.sh: 外部测试结束!" 
+echo -e "\nrun_external_tests.sh: 外部测试结束!"

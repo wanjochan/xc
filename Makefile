@@ -18,8 +18,14 @@ INTERNAL_TEST_DIR := $(TEST_DIR)/internal
 EXTERNAL_TEST_DIR := $(TEST_DIR)/external
 
 # 编译器设置
-COSMOCC := ~/cosmocc/bin/cosmocc
-AR := ~/cosmocc/bin/cosmoar
+COSMOCC ?= $(HOME)/cosmocc/bin/cosmocc
+AR ?= $(HOME)/cosmocc/bin/cosmoar
+ifeq ($(wildcard $(COSMOCC)),)
+COSMOCC := cc
+endif
+ifeq ($(wildcard $(AR)),)
+AR := ar
+endif
 
 # 编译选项
 CFLAGS := -Os -fomit-frame-pointer -fno-pie -fno-pic -fno-common -fno-plt -mcmodel=large -finline-functions
@@ -43,7 +49,7 @@ dirs:
 .PHONY: libxc
 libxc: dirs
 	@echo "构建libxc.a (使用$(CPUS)个核心)..."
-	@bash $(SCRIPTS_DIR)/build_libxc.sh $(CPUS)
+	@COSMOCC=$(COSMOCC) AR=$(AR) bash $(SCRIPTS_DIR)/build_libxc.sh $(CPUS)
 
 # 构建并运行测试
 .PHONY: test
@@ -53,14 +59,14 @@ test: test-internal test-external
 .PHONY: test-internal
 test-internal: libxc
 	@echo "构建并运行内部测试..."
-	@MAKE_JOBS=$(CPUS) bash $(SCRIPTS_DIR)/run_internal_tests.sh
+	@MAKE_JOBS=$(CPUS) COSMOCC=$(COSMOCC) bash $(SCRIPTS_DIR)/run_internal_tests.sh
 
 # 构建并运行外部测试
 .PHONY: test-external
 test-external: libxc
 	@echo "构建并运行外部测试..."
-	@MAKE_JOBS=$(CPUS) bash $(SCRIPTS_DIR)/run_external_tests.sh
-
+	@MAKE_JOBS=$(CPUS) COSMOCC=$(COSMOCC) bash $(SCRIPTS_DIR)/run_external_tests.sh
+	
 # 清理构建产物
 .PHONY: clean
 clean:

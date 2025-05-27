@@ -248,44 +248,26 @@ bool xc_object_has(xc_runtime_t *rt, xc_object_t *obj, const char *key) {
     return find_property((xc_object_data_t *)obj, key) != NULL;
 }
 
-//TODO change void to bool
-void xc_object_delete(xc_runtime_t *rt, xc_object_t *obj, const char *key) {
+// Delete a property from an object. Returns true if the key existed.
+bool xc_object_delete(xc_runtime_t *rt, xc_object_t *obj, const char *key) {
     assert(xc_is_object(rt, obj));
     xc_object_data_t *object = (xc_object_data_t *)obj;
-    
+
     for (size_t i = 0; i < object->count; i++) {
         const char *prop_key = xc_string_value(rt, object->properties[i].key);
         if (strcmp(prop_key, key) == 0) {
-            // /* Release property references */
-            // if (object->properties[i].key) {
-            //     xc_gc_release(rt, object->properties[i].key);
-            // }
-            // if (object->properties[i].value) {
-            //     xc_gc_release(rt, object->properties[i].value);
-            // }
-            // 在纯 GC 系统中，我们不需要显式释放引用
-            // 只需要移除引用关系，让 GC 处理不可达对象
-// 重要的不是 memmove 本身，而是引用关系的断开：
-// 在 memmove 之前，对象持有对 "age" 值的引用
-// memmove 后，对象不再持有这个引用
-// 如果没有其他地方引用这个值，它就变成了"不可达"对象
-// 下次 GC 运行时，会识别并回收这个不可达对象
-            /* Move remaining properties */
             memmove(&object->properties[i], &object->properties[i + 1],
                    (object->count - i - 1) * sizeof(xc_property_t));
             object->count--;
 
-            /* Clear the last slot */
             if (object->count < object->capacity) {
                 object->properties[object->count].key = NULL;
                 object->properties[object->count].value = NULL;
             }
-            // // 可选：标记对象为灰色，触发重新标记
-            // xc_gc_mark(rt, obj);
-            return;//return true;
+            return true;
         }
     }
-    // return false;
+    return false;
 }
 
 /* Type checking */
