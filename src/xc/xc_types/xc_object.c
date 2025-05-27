@@ -248,8 +248,8 @@ bool xc_object_has(xc_runtime_t *rt, xc_object_t *obj, const char *key) {
     return find_property((xc_object_data_t *)obj, key) != NULL;
 }
 
-//TODO change void to bool
-void xc_object_delete(xc_runtime_t *rt, xc_object_t *obj, const char *key) {
+// Delete a property from an object. Returns true if the key existed.
+bool xc_object_delete(xc_runtime_t *rt, xc_object_t *obj, const char *key) {
     assert(xc_is_object(rt, obj));
     xc_object_data_t *object = (xc_object_data_t *)obj;
     
@@ -282,10 +282,10 @@ void xc_object_delete(xc_runtime_t *rt, xc_object_t *obj, const char *key) {
             }
             // // 可选：标记对象为灰色，触发重新标记
             // xc_gc_mark(rt, obj);
-            return;//return true;
+            return true;
         }
     }
-    // return false;
+    return false;
 }
 
 /* Type checking */
