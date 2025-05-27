@@ -295,7 +295,7 @@ int xc_array_index_of_from(xc_runtime_t *rt, xc_object_t *arr, xc_object_t *valu
 xc_object_t *xc_object_get(xc_runtime_t *rt, xc_object_t *obj, const char *key);
 void xc_object_set(xc_runtime_t *rt, xc_object_t *obj, const char *key, xc_object_t *value);
 bool xc_object_has(xc_runtime_t *rt, xc_object_t *obj, const char *key);
-void xc_object_delete(xc_runtime_t *rt, xc_object_t *obj, const char *key);
+bool xc_object_delete(xc_runtime_t *rt, xc_object_t *obj, const char *key);
 xc_object_t *xc_function_call(xc_runtime_t *rt, xc_object_t *func, xc_object_t *this_obj, size_t argc, xc_object_t **argv);
 
 /*
