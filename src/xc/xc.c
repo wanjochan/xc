@@ -120,6 +120,11 @@ static xc_val convert_type(xc_val obj, int target_type) {
 /* 注册类型 */
 int xc_register_type(const char* name, xc_type_lifecycle_t* lifecycle) {
     // printf("DEBUG xc_register_type(\"%s\"), lifecycle=%d\n", name, lifecycle);
+    if (!name || !lifecycle) {
+        XC_LOG_DEBUG("xc_register_type: invalid parameters");
+        return -1;
+    }
+
     if (type_registry.count >= 16) {
         return -1;
     }
@@ -187,7 +192,8 @@ int xc_register_type(const char* name, xc_type_lifecycle_t* lifecycle) {
     type_registry.count++;
     
     if (entry->lifecycle.initializer) {
-        entry->lifecycle.initializer();//todo change to rt once the 1sr arg ready
+        /* TODO: pass runtime once initializer signature is updated */
+        entry->lifecycle.initializer();
     }
     
     return type_id;
