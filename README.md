@@ -34,7 +34,8 @@ XC是一个非常小的中层次C运行时库，具有类型系统和自动垃�
 
 ## 构建系统
 
-本项目使用Makefile和自定义构建脚本来管理构建过程。编译器使用cosmocc-4.0.2。
+本项目使用Makefile和自定义构建脚本管理构建过程。默认使用Cosmopolitan提供的`cosmocc`编译器。
+在缺少Cosmopolitan工具链时，可通过环境变量`COSMOCC`指定系统编译器（如`gcc`或`cc`），所有脚本都会自动回退到该编译器。
 
 ### 主要构建目标
 
@@ -76,6 +77,5 @@ cosmopolitan => infrax层 => xc运行时 => libxc.a + libxc.h
 
    编译命令:
    ```bash
-   cosmocc -I/path/to/xc/include your_file.c -L/path/to/xc/lib -lxc -o your_program
+   $COSMOCC -I/path/to/xc/include your_file.c -L/path/to/xc/lib -lxc -o your_program
    ```
-ext c high level var sys lib

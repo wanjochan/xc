@@ -132,11 +132,20 @@ static void test_object_methods(void) {
 
 static void test_object_delete(void) {
     test_start("Object Delete");
-    
-    /* Skip tests for now */
-    printf("注意: 对象类型未完全实现，跳过测试\n");
-    TEST_ASSERT(1, "Skipped object tests because object type is not fully implemented");
-    
+    xc_runtime_t *rt = xc_singleton();
+    xc_object_t *obj = xc_object_create(rt);
+    xc_object_t *value = xc_number_create(rt, 42);
+
+    xc_object_set(rt, obj, "age", value);
+    TEST_ASSERT(xc_object_has(rt, obj, "age"), "object has key before deletion");
+
+    bool removed = xc_object_delete(rt, obj, "age");
+    TEST_ASSERT(removed, "delete returns true for existing key");
+    TEST_ASSERT(!xc_object_has(rt, obj, "age"), "key removed from object");
+
+    bool removed_again = xc_object_delete(rt, obj, "age");
+    TEST_ASSERT(!removed_again, "delete returns false when key missing");
+
     test_end("Object Delete");
 }
 

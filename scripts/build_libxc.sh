@@ -15,12 +15,17 @@ INCLUDE_DIR="${PROJECT_ROOT}/include"
 LIB_DIR="${PROJECT_ROOT}/lib"
 TMP_DIR="${PROJECT_ROOT}/tmp"
 
-# 设置编译器
-COSMOCC=~/cosmocc/bin/cosmocc
-AR=~/cosmocc/bin/cosmoar
+# 设置编译器，允许通过环境变量覆盖，并在缺少cosmocc时回退到系统编译器
+COSMOCC=${COSMOCC:-$(command -v cosmocc 2>/dev/null || command -v gcc || command -v cc)}
+AR=${AR:-$(command -v cosmoar 2>/dev/null || command -v ar)}
 
 # 设置编译选项
-CFLAGS="-Os -fomit-frame-pointer -fno-pie -fno-pic -fno-common -fno-plt -mcmodel=large -finline-functions -I${SRC_DIR} -I${SRC_DIR}/infrax -I${INCLUDE_DIR} -I~/cosmocc/include"
+# 如果cosmocc自带的头文件存在，则加入搜索路径
+COSMO_INCLUDE="${COSMO_INCLUDE:-~/cosmocc/include}"
+if [ ! -d "$COSMO_INCLUDE" ]; then
+    COSMO_INCLUDE=""
+fi
+CFLAGS="-Os -fomit-frame-pointer -fno-pie -fno-pic -fno-common -fno-plt -mcmodel=large -finline-functions -I${SRC_DIR} -I${SRC_DIR}/infrax -I${INCLUDE_DIR} ${COSMO_INCLUDE:+-I${COSMO_INCLUDE}}"
 
 # 创建输出目录（如果不存在）
 mkdir -p "${LIB_DIR}"

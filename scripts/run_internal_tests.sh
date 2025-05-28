@@ -17,11 +17,14 @@ BIN_DIR="${PROJECT_ROOT}/bin"
 TEST_DIR="${PROJECT_ROOT}/test"
 INTERNAL_TEST_DIR="${TEST_DIR}/internal"
 
-# 设置编译器
-COSMOCC=~/cosmocc/bin/cosmocc
+# 设置编译器，允许通过环境变量覆盖
+COSMOCC=${COSMOCC:-$(command -v cosmocc 2>/dev/null || command -v gcc || command -v cc)}
 
 # 设置编译选项
-CFLAGS="-Os -g -I${SRC_DIR} -I${SRC_DIR}/infrax -I${INCLUDE_DIR} -I${INTERNAL_TEST_DIR} -I~/cosmocc/include"
+# 检测cosmocc头文件目录
+COSMO_INCLUDE="${COSMO_INCLUDE:-~/cosmocc/include}"
+[ -d "$COSMO_INCLUDE" ] || COSMO_INCLUDE=""
+CFLAGS="-Os -g -I${SRC_DIR} -I${SRC_DIR}/infrax -I${INCLUDE_DIR} -I${INTERNAL_TEST_DIR} ${COSMO_INCLUDE:+-I${COSMO_INCLUDE}}"
 
 # 创建输出目录（如果不存在）
 mkdir -p "${BIN_DIR}"
