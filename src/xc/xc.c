@@ -120,6 +120,11 @@ static xc_val convert_type(xc_val obj, int target_type) {
 /* 注册类型 */
 int xc_register_type(const char* name, xc_type_lifecycle_t* lifecycle) {
     // printf("DEBUG xc_register_type(\"%s\"), lifecycle=%d\n", name, lifecycle);
+    if (!name || !lifecycle) {
+        XC_LOG_DEBUG("xc_register_type: invalid parameters");
+        return -1;
+    }
+
     if (type_registry.count >= 16) {
         return -1;
     }
@@ -169,12 +174,14 @@ int xc_register_type(const char* name, xc_type_lifecycle_t* lifecycle) {
     
     entry->id = type_id;
     memcpy(&entry->lifecycle, lifecycle, sizeof(xc_type_lifecycle_t));
-    XC_LOG_DEBUG("xc_register_type(\"%s\"), lifecycle=%d, type_id=%d", name, lifecycle, type_id);
+    /* 打印调试信息时使用指针格式，避免格式警告 */
+    XC_LOG_DEBUG("xc_register_type(\"%s\"), lifecycle=%p, type_id=%d", name,
+                 (void*)lifecycle, type_id);
     if (lifecycle->creator) {
-        XC_LOG_DEBUG("%s creator=%d", name, lifecycle->creator);
+        XC_LOG_DEBUG("%s creator=%p", name, (void*)lifecycle->creator);
     }
     if (lifecycle->initializer) {
-        XC_LOG_DEBUG("%s initializer=%d", name, lifecycle->initializer);
+        XC_LOG_DEBUG("%s initializer=%p", name, (void*)lifecycle->initializer);
     }
 
     /* 添加到哈希表 */
@@ -185,7 +192,8 @@ int xc_register_type(const char* name, xc_type_lifecycle_t* lifecycle) {
     type_registry.count++;
     
     if (entry->lifecycle.initializer) {
-        entry->lifecycle.initializer();//todo change to rt once the 1sr arg ready
+        /* TODO: pass runtime once initializer signature is updated */
+        entry->lifecycle.initializer();
     }
     
     return type_id;
