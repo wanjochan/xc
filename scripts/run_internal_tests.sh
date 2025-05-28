@@ -17,8 +17,17 @@ BIN_DIR="${PROJECT_ROOT}/bin"
 TEST_DIR="${PROJECT_ROOT}/test"
 INTERNAL_TEST_DIR="${TEST_DIR}/internal"
 
-# 设置编译器
-COSMOCC=~/cosmocc/bin/cosmocc
+# 设置编译器，允许通过环境变量覆盖，并在缺少cosmocc时退回gcc/cc
+COSMOCC=${COSMOCC:-~/cosmocc/bin/cosmocc}
+if [ ! -x "$COSMOCC" ]; then
+    if command -v cosmocc >/dev/null 2>&1; then
+        COSMOCC=$(command -v cosmocc)
+    elif command -v gcc >/dev/null 2>&1; then
+        COSMOCC=$(command -v gcc)
+    else
+        COSMOCC=$(command -v cc)
+    fi
+fi
 
 # 设置编译选项
 CFLAGS="-Os -g -I${SRC_DIR} -I${SRC_DIR}/infrax -I${INCLUDE_DIR} -I${INTERNAL_TEST_DIR} -I~/cosmocc/include"

@@ -18,8 +18,19 @@ INTERNAL_TEST_DIR := $(TEST_DIR)/internal
 EXTERNAL_TEST_DIR := $(TEST_DIR)/external
 
 # 编译器设置
-COSMOCC := ~/cosmocc/bin/cosmocc
-AR := ~/cosmocc/bin/cosmoar
+# 优先使用COSMOCC和AR环境变量，否则在系统中查找可用的cosmocc/cosmoar，
+# 若未找到则回退到gcc/cc和ar
+COSMOCC ?= $(shell \
+    if [ -x "$$COSMOCC" ]; then echo $$COSMOCC; \
+    elif [ -x ~/cosmocc/bin/cosmocc ]; then echo ~/cosmocc/bin/cosmocc; \
+    elif command -v cosmocc >/dev/null 2>&1; then command -v cosmocc; \
+    elif command -v gcc >/dev/null 2>&1; then command -v gcc; \
+    else command -v cc; fi)
+AR ?= $(shell \
+    if [ -x "$$AR" ]; then echo $$AR; \
+    elif [ -x ~/cosmocc/bin/cosmoar ]; then echo ~/cosmocc/bin/cosmoar; \
+    elif command -v cosmoar >/dev/null 2>&1; then command -v cosmoar; \
+    else command -v ar; fi)
 
 # 编译选项
 CFLAGS := -Os -fomit-frame-pointer -fno-pie -fno-pic -fno-common -fno-plt -mcmodel=large -finline-functions
